@@ -9,7 +9,7 @@
 
 'use strict';
 
-const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+// clamp is defined in roaryx7.js and available globally
 
 // ─── Environment Dimensions & Scaling ─────────────────────────────────────────
 const ROOM_WIDTH = 340;   // cm (-170..+170)
@@ -256,6 +256,8 @@ function buildDeskPath() {
 
 function startMission() {
   missionActive = true;
+  drive.setGoToK(true);
+  drive.DXEnabled = true;
   btnToggleMission.classList.remove('paused');
   btnMissionIcon.textContent = '⏸';
   btnMissionLabel.textContent = 'Pauză Misiune';
@@ -273,6 +275,8 @@ function startMission() {
 
 function pauseMission() {
   missionActive = false;
+  drive.stopMotors();
+  drive.setGoToK(false);
   btnToggleMission.classList.add('paused');
   btnMissionIcon.textContent = '▶';
   btnMissionLabel.textContent = 'Reia Misiune';
@@ -303,6 +307,7 @@ function resetAll() {
   const dock = POSES.dock();
   drive.setPosition(dock.x, dock.y, toRadians(dock.heading));
   drive.stopMotors();
+  drive.setGoToK(false);
   drive.resetSpline();
   trail.length = 0;
   CURRENT_SPLINE = [];
@@ -318,12 +323,22 @@ function resetAll() {
 btnToggleMission.addEventListener('click', toggleMission);
 btnFetchBooks.addEventListener('click', () => {
   missionActive = true;
+  drive.setGoToK(true);
+  drive.DXEnabled = true;
+  btnToggleMission.classList.remove('paused');
+  btnMissionIcon.textContent = '⏸';
+  btnMissionLabel.textContent = 'Pauză Misiune';
   missionState = 'NAV_TO_SHELF';
   buildShelfPath();
   setMissionStatus('Deplasare către Raft', 1, 'Comandă directă: robotul se deplasează la raftul de cărți...');
 });
 btnDeliverDesk.addEventListener('click', () => {
   missionActive = true;
+  drive.setGoToK(true);
+  drive.DXEnabled = true;
+  btnToggleMission.classList.remove('paused');
+  btnMissionIcon.textContent = '⏸';
+  btnMissionLabel.textContent = 'Pauză Misiune';
   missionState = 'NAV_TO_DESK';
   buildDeskPath();
   setMissionStatus('Deplasare către Birou', 3, 'Comandă directă: robotul transportă marfa către birou...');
@@ -1232,3 +1247,10 @@ function frame() {
 // Start simulation immediately in standby mode ready to run!
 updateCargoUI();
 requestAnimationFrame(frame);
+
+// Auto-launch the courier mission after 600ms so the sponsor immediately sees the robot in motion!
+setTimeout(() => {
+  if (!missionActive && missionState === 'STANDBY') {
+    startMission();
+  }
+}, 600);
