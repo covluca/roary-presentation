@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoaryX7 — Holonomic Drive Controller</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>RoaryX7</h1>
+      <p class="subtitle">Holonomic Drive — always running in the background</p>
+    </header>
+
+    <div id="main">
+      <!-- ── Field canvas ── -->
+      <div id="canvas-wrap">
+        <canvas id="field" width="640" height="640"></canvas>
+      </div>
+
+      <!-- ── Controls & telemetry ── -->
+      <div id="panel">
+        <!-- Auto (goToK) -->
+        <div id="auto-controls">
+          <h3>Kirby Air Riders — Auto</h3>
+          <p class="hint">
+            Roary never starts or stops — the loop just runs. The stick always
+            drives (<code>mainDrivePowers</code>). <b>Start Auto</b> only toggles
+            <code>goToK</code>, so the spline's power (<code>goTo</code>) is added in
+            or not. <code>B</code> toggles it too.
+          </p>
+          <div id="btn-row">
+            <button id="btn-start-auto">▶ Start Auto</button>
+            <button id="btn-reset">⟲ Reset Robot</button>
+          </div>
+          <div id="goToK-indicator">goToK = 0 · stick only</div>
+        </div>
+
+        <!-- Stick -->
+        <div id="teleop-controls">
+          <h3>Stick (drag or WASD + Q/E)</h3>
+          <div id="joystick-wrap">
+            <canvas id="joystick" width="120" height="120"></canvas>
+          </div>
+          <div id="joy-info">
+            <span id="joy-x">X: 0.00</span>
+            <span id="joy-y">Y: 0.00</span>
+            <span id="joy-r">R: 0.00</span>
+          </div>
+          <p class="hint">
+            W/S = forward/back · A/D = strafe · Q/E = rotate.
+            Works in auto too — it blends onto the spline.
+          </p>
+        </div>
+
+        <!-- Waypoints (TARGET) — live editing -->
+        <div id="waypoints">
+          <h3>Waypoints — TARGET (live)</h3>
+          <div id="wp-msg"></div>
+          <div id="wp-list"></div>
+          <p class="hint">
+            <b>Drag</b> a point on the field to move it · <b>double-click</b> the
+            field to add one · click a point/row to select, then
+            <b>Del</b> or ✕ to delete (min 4). Edits apply live — Roary keeps running.
+          </p>
+        </div>
+
+        <!-- Telemetry -->
+        <div id="telemetry">
+          <h3>Telemetry</h3>
+          <table>
+            <tr><td>X</td><td id="tel-x">0.00</td></tr>
+            <tr><td>Y</td><td id="tel-y">0.00</td></tr>
+            <tr><td>Heading</td><td id="tel-h">0.0°</td></tr>
+            <tr><td>Speed</td><td id="tel-vel">0.0 cm/s</td></tr>
+            <tr><td>rotX / rotY</td><td><span id="tel-rx">0.000</span> / <span id="tel-ry">0.000</span></td></tr>
+            <tr><td>Heading Pwr</td><td id="tel-hp">0.000</td></tr>
+            <tr><td>State</td><td id="tel-done">—</td></tr>
+            <tr><td>Loop Hz</td><td id="tel-hz">0</td></tr>
+          </table>
+
+          <h4>Wheel Powers</h4>
+          <div id="wheels">
+            <div class="wheel" id="wheel-fl">FL: 0.00</div>
+            <div class="wheel" id="wheel-fr">FR: 0.00</div>
+            <div class="wheel" id="wheel-bl">BL: 0.00</div>
+            <div class="wheel" id="wheel-br">BR: 0.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        Drive logic ported from <code>doritoPower/Roaryx7.java</code> ·
+        <code>mainDrive</code> + waypoints from <code>autonom/Kirby/KirbyAirRiders.java</code>
+      </p>
+    </footer>
+  </div>
+
+  <script src="roaryx7.js"></script>
+  <script src="sim.js"></script>
+</body>
+</html>
