@@ -288,10 +288,14 @@ class Roaryx7Drive {
     this.powerCompensator = Math.max(1, 14.0 / this.batteryVoltage);
   }
 
-  stopMotors() { this.FL = 0; this.FR = 0; this.BL = 0; this.BR = 0; }
+  stopMotors() {
+    this.goTo.FLPow = 0; this.goTo.FRPow = 0; this.goTo.BLPow = 0; this.goTo.BRPow = 0;
+    this.FL = 0; this.FR = 0; this.BL = 0; this.BR = 0;
+  }
 
   /** Reset the spline follower so the next splineToDX re-initializes. */
   resetSpline() {
+    this.goTo.FLPow = 0; this.goTo.FRPow = 0; this.goTo.BLPow = 0; this.goTo.BRPow = 0;
     this.splineFirstTime = true;
     this.splineDone = false;
     this.doneTranslationSpline = false;
@@ -372,10 +376,23 @@ class Roaryx7Drive {
   closestT(splinePoints) {
     let closest = Infinity;
     let closestT = 0;
-    for (let step = 0; step <= 20; step++) {
-      const t = step * 0.05;
+    // 1) Coarse scan: 40 steps
+    for (let step = 0; step <= 40; step++) {
+      const t = step * 0.025;
       const d = this.getPoint().distanceTo(this.catmullRomSpline(splinePoints, t));
-      if (d <= closest) {
+      if (d < closest) {
+        closest = d;
+        closestT = t;
+      }
+    }
+    // 2) Fine refinement around best step: ±0.025 in 10 steps
+    const tMin = Math.max(0, closestT - 0.025);
+    const tMax = Math.min(1, closestT + 0.025);
+    const fineSteps = 10;
+    for (let j = 0; j <= fineSteps; j++) {
+      const t = tMin + (tMax - tMin) * (j / fineSteps);
+      const d = this.getPoint().distanceTo(this.catmullRomSpline(splinePoints, t));
+      if (d < closest) {
         closest = d;
         closestT = t;
       }
@@ -390,7 +407,7 @@ class Roaryx7Drive {
       this.i = 0;
       this.localT = 0;
       this.firstTime = false;
-      this.doneGoTo = true;
+      this.doneGoTo = false;
       this.splineDone = false;
       this.splineFirstTime = false;
       this.useInterpolator = false;
@@ -407,13 +424,6 @@ class Roaryx7Drive {
       }
     }
 
-    this.t = this.i + this.localT;
-    if (this.localT >= 0.95 && this.i < this.length - 4) {
-      if (this.localT >= 1 || (this.splinePoints && this.getPoint().distanceTo(this.catmullRomSpline(this.splinePoints, 1)) < 7.5)) {
-        this.i++;
-      }
-    }
-
     if (goToValuesArr.length > 1) {
       this.splinePoints = [
         new Point(goToValuesArr[this.i].target.x, goToValuesArr[this.i].target.y),
@@ -421,6 +431,25 @@ class Roaryx7Drive {
         new Point(goToValuesArr[this.i + 2].target.x, goToValuesArr[this.i + 2].target.y),
         new Point(goToValuesArr[this.i + 3].target.x, goToValuesArr[this.i + 3].target.y),
       ];
+
+      this.localT = this.closestT(this.splinePoints);
+
+      // Check if ready to advance to next segment
+      const endOfCurrentSeg = this.catmullRomSpline(this.splinePoints, 1);
+      const distToSegEnd = this.getPoint().distanceTo(endOfCurrentSeg);
+      if ((this.localT >= 0.90 || distToSegEnd < 12) && this.i < this.length - 4) {
+        this.i++;
+        this.splinePoints = [
+          new Point(goToValuesArr[this.i].target.x, goToValuesArr[this.i].target.y),
+          new Point(goToValuesArr[this.i + 1].target.x, goToValuesArr[this.i + 1].target.y),
+          new Point(goToValuesArr[this.i + 2].target.x, goToValuesArr[this.i + 2].target.y),
+          new Point(goToValuesArr[this.i + 3].target.x, goToValuesArr[this.i + 3].target.y),
+        ];
+        this.localT = this.closestT(this.splinePoints);
+      }
+
+      this.t = this.i + this.localT;
+
       const headingPoints = [
         new Point(goToValuesArr[this.i].target.heading, 0),
         new Point(goToValuesArr[this.i + 1].target.heading, 0),
@@ -433,7 +462,6 @@ class Roaryx7Drive {
         new Point(goToValuesArr[this.i + 2].speed, 0),
         new Point(goToValuesArr[this.i + 3].speed, 0),
       ];
-      this.localT = this.closestT(this.splinePoints);
 
       const interH = this.catmullRomSpline(headingPoints, this.localT);
       const interS = this.catmullRomSpline(speedPoints, this.localT);
@@ -447,7 +475,14 @@ class Roaryx7Drive {
       this.speed = goToValuesArr[0].speed;
     }
 
-    this.distanceToEnd = goToValuesArr[goToValuesArr.length - 1].target.distanceToPose(this.target);
+    const endTarget = goToValuesArr[goToValuesArr.length - 1].target;
+    this.distanceToEnd = endTarget.distanceToPose(this.target);
+    const distToEndDirect = endTarget.distanceTo(this.getPoint());
+
+    const onLastSeg = goToValuesArr.length <= 4 || this.i >= this.length - 4;
+    if (onLastSeg && (this.distanceToEnd <= 4.0 || distToEndDirect <= 5.0 || (distToEndDirect < 14.0 && vel.radius() < 16.0))) {
+      this.doneTranslationSpline = true;
+    }
 
     if (this.doneTranslationSpline) {
       this.splineDone = true;
@@ -456,8 +491,9 @@ class Roaryx7Drive {
       this.splineDone = false;
     }
 
-    this.lookBehind = this.catmullRomSpline(this.splinePoints, this.localT - 0.2 * (this.length - 3));
-    this.lookAhead = this.catmullRomSpline(this.splinePoints, this.localT + 0.2 * (this.length - 3));
+    const lookOffset = 0.16;
+    this.lookBehind = this.catmullRomSpline(this.splinePoints, Math.max(0, this.localT - lookOffset));
+    this.lookAhead = this.catmullRomSpline(this.splinePoints, Math.min(1, this.localT + lookOffset));
 
     this.derivative = this.catmullRomDerivative(this.splinePoints, this.localT);
     this.normalLeft = this.catmullRomNormalLeft(this.splinePoints, this.localT);
@@ -493,34 +529,25 @@ class Roaryx7Drive {
       this.isLeftProjection = true;
     }
 
-    this.breakInterpolator = 1;
-    this.breakPower = 1;
-    this.distanceToEnd = goToValuesArr[goToValuesArr.length - 1].target.distanceToPose(this.target);
     this.directionToEnd = this.getPoint().distanceTo(this.lookAhead) - this.getPoint().distanceTo(this.lookBehind);
 
-    this.breakInterpolator = Math.min(this.distanceToEnd / 71, 1);
-    this.breakPower = twoXSqrd(this.breakInterpolator, 0.8);
+    this.breakInterpolator = Math.min(distToEndDirect / 65, 1);
+    this.breakPower = twoXSqrd(this.breakInterpolator, 0.35);
 
     this.powerMixer = 0;
-    const endTarget = goToValuesArr[goToValuesArr.length - 1].target;
     this.futurePos = this.getPoint().add(vel.divide(8));
-    const onLastSeg = goToValuesArr.length <= 4 || this.i >= this.length - 4;
-    if (onLastSeg && (this.distanceToEnd <= 6.4 || endTarget.distanceTo(this.futurePos) <= 8 || (endTarget.distanceTo(this.futurePos) < 25 && vel.radius() < 33))) {
-      this.doneTranslationSpline = true;
-    } else if (!this.doneTranslationSpline) {
-      this.breakPower = twoXSqrd(this.breakInterpolator, 0.8);
 
-      if (onLastSeg && endTarget.distanceTo(this.futurePos) < 8) {
+    if (!this.doneTranslationSpline) {
+      if (onLastSeg && distToEndDirect < 6) {
         this.BRAKEPLS = true;
-        this.breakPower = 0;
-      }
-      if (onLastSeg && endTarget.distanceTo(this.futurePos) < 35) {
-        this.breakPower = Math.min(this.breakPower, 0.35);
-      } else {
+        this.breakPower = 0.15;
+      } else if (onLastSeg && distToEndDirect < 25) {
         this.BRAKEPLS = false;
+        this.breakPower = Math.min(this.breakPower, 0.45);
       }
 
-      this.powerMixer = Math.max(Math.sqrt(Math.pow(this.speed, 2) - Math.pow(this.normalPower.radius() - 0.0000001, 2)) * this.breakPower, this.BRAKEPLS ? 0 : 0.24);
+      const minFloor = onLastSeg ? Math.min(0.22, Math.max(0.08, distToEndDirect * 0.015)) : 0.22;
+      this.powerMixer = Math.max(Math.sqrt(Math.max(0, Math.pow(this.speed, 2) - Math.pow(this.normalPower.radius() - 0.0000001, 2))) * this.breakPower, this.BRAKEPLS ? 0.10 : minFloor);
     }
 
     const curveBreak = Math.min(twoXSqrdErr(Math.abs(this.projectionInterpolator), 0.08, 0.02), 0.17);
@@ -625,20 +652,22 @@ class Roaryx7Drive {
 
     this.interpolator = this.deltaH / (Math.PI * 2.0 / 3.0);
 
-    if (Math.abs(toDegrees(this.deltaH)) > 0.8 * error) {
+    const dist = this.goToDelta.radius();
+    const degError = Math.abs(toDegrees(this.deltaH));
+
+    if (degError > 0.8 * error) {
       this.doneHeadingGoTo = false;
-      const ultimateMinH = 0.134;
-      this.headingPower = twoXSqrd(this.interpolator, 0.134) * (this.robotName === 'Macara' ? -1 : 1);
-      if (abs(this.headingPower) < ultimateMinH)
-        this.headingPower = ultimateMinH * this.headingPower / abs(this.headingPower);
+      const hScale = Math.min(1.0, Math.max(0.12, degError / 20.0));
+      const ultimateMinH = 0.10 * hScale;
+      this.headingPower = twoXSqrd(this.interpolator, ultimateMinH) * (this.robotName === 'Macara' ? -1 : 1);
     } else {
       this.headingPower = 0;
       this.doneHeadingGoTo = true;
     }
 
     const SAFE_ZONE_RADIUS = 24;
-    const transInterp = min(this.goToDelta.radius() / SAFE_ZONE_RADIUS, 1);
-    this.transInter = twoXSqrd(transInterp, 0.22);
+    const transInterp = min(dist / SAFE_ZONE_RADIUS, 1);
+    this.transInter = twoXSqrd(transInterp, 0.18);
 
     this.tVR = -this.pathH + Math.PI / 4;
 
@@ -648,23 +677,24 @@ class Roaryx7Drive {
       this.globalSpeed = speed * this.transInter;
     }
 
-    const errX = -this.goToDelta.radius() * Math.cos(this.tVR) + this.goToDelta.radius() * Math.sin(this.tVR);
-    const errY = -this.goToDelta.radius() * Math.sin(this.tVR) - this.goToDelta.radius() * Math.cos(this.tVR);
+    const errX = -dist * Math.cos(this.tVR) + dist * Math.sin(this.tVR);
+    const errY = -dist * Math.sin(this.tVR) - dist * Math.cos(this.tVR);
 
     this.rotX = -this.globalSpeed * Math.cos(this.tVR) + this.globalSpeed * Math.sin(this.tVR);
     this.rotY = -this.globalSpeed * Math.sin(this.tVR) - this.globalSpeed * Math.cos(this.tVR);
 
-    const ultimateMinX = 0.22;
-    const ultimateMinY = 0.17;
-    if (abs(this.rotX) < ultimateMinX && this.rotX !== 0) this.rotX = ultimateMinX * this.rotX / abs(this.rotX);
-    if (abs(this.rotY) < ultimateMinY && this.rotY !== 0) this.rotY = ultimateMinY * this.rotY / abs(this.rotY);
-
-    if (this.goToDelta.radius() < error) {
+    if (dist < error) {
       this.rotX = 0;
       this.rotY = 0;
       this.doneTranslation = true;
     } else {
       this.doneTranslation = false;
+      // Proportional scale to avoid chattering near the target
+      const smoothScale = Math.min(1.0, Math.max(0.15, dist / (SAFE_ZONE_RADIUS * 0.4)));
+      const minX = 0.14 * smoothScale;
+      const minY = 0.12 * smoothScale;
+      if (abs(this.rotX) < minX && this.rotX !== 0) this.rotX = minX * Math.sign(this.rotX);
+      if (abs(this.rotY) < minY && this.rotY !== 0) this.rotY = minY * Math.sign(this.rotY);
     }
 
     const hasStick = Math.abs(this.mainDrivePowers.FLPow) + Math.abs(this.mainDrivePowers.FRPow) +
@@ -700,7 +730,7 @@ class Roaryx7Drive {
     }
 
     const Normalizer = Math.max(Math.max(Math.abs(FLPower), Math.abs(FRPower)), Math.max(Math.abs(BLPower), Math.abs(BRPower)));
-    if (FLPower > 1 && FRPower > 1 && BLPower > 1 && BRPower > 1) {
+    if (Normalizer > 1) {
       FLPower /= Normalizer; FRPower /= Normalizer; BLPower /= Normalizer; BRPower /= Normalizer;
     }
 
@@ -724,7 +754,7 @@ class Roaryx7Drive {
     let BRPower = this.goTo.BRPow * this.goToK + this.mainDrivePowers.BRPow;
 
     const Normalizer = Math.max(Math.max(Math.abs(FLPower), Math.abs(FRPower)), Math.max(Math.abs(BLPower), Math.abs(BRPower)));
-    if (FLPower > 1 && FRPower > 1 && BLPower > 1 && BRPower > 1) {
+    if (Normalizer > 1) {
       FLPower /= Normalizer; FRPower /= Normalizer; BLPower /= Normalizer; BRPower /= Normalizer;
     }
 
@@ -1467,25 +1497,26 @@ class RoaryIntake {
   }
 }
 
-// ── Exports (plain scripts, shared global scope) ────────────────────────────
-window.Point = Point;
-window.Pose2d = Pose2d;
-window.goToValues = goToValues;
-window.Roaryx7Drive = Roaryx7Drive;
-window.angleWrap = angleWrap;
-window.twoXSqrd = twoXSqrd;
-window.twoXSqrdErr = twoXSqrdErr;
-window.inRange = inRange;
-window.isInRange = isInRange;
-window.FSqrt = FSqrt;
-window.toRadians = toRadians;
-window.toDegrees = toDegrees;
-window.isRobotInBigTriangle = isRobotInBigTriangle;
-window.isRobotInSmallTriangle = isRobotInSmallTriangle;
-window.inIndexer = inIndexer;
-window.PaddleState = PaddleState;
-window.MechGlobals = MechGlobals;
-window.FarulCodes = FarulCodes;
-window.RoarySensors = RoarySensors;
-window.RoaryOutTake = RoaryOutTake;
-window.RoaryIntake = RoaryIntake;
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+// ── Exports (plain scripts, shared global scope + Node test support) ─────────
+const roaryExports = {
+  Point, Pose2d, goToValues, Roaryx7Drive, angleWrap, twoXSqrd, twoXSqrdErr,
+  inRange, isInRange, clamp, FSqrt, toRadians, toDegrees, isRobotInBigTriangle,
+  isRobotInSmallTriangle, inIndexer, PaddleState, MechGlobals, FarulCodes,
+  RoarySensors, RoaryOutTake, RoaryIntake
+};
+
+if (typeof window !== 'undefined') {
+  for (const [k, v] of Object.entries(roaryExports)) {
+    window[k] = v;
+  }
+}
+if (typeof globalThis !== 'undefined') {
+  for (const [k, v] of Object.entries(roaryExports)) {
+    globalThis[k] = v;
+  }
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = roaryExports;
+}
