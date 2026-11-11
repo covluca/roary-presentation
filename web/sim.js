@@ -116,8 +116,6 @@ const joyCtx = joyCanvas.getContext('2d');
 const btnToggleMission = document.getElementById('btn-toggle-mission');
 const btnMissionIcon = document.getElementById('btn-mission-icon');
 const btnMissionLabel = document.getElementById('btn-mission-label');
-const btnFetchBooks = document.getElementById('btn-fetch-books');
-const btnDeliverDesk = document.getElementById('btn-deliver-desk');
 const btnDemoNudge = document.getElementById('btn-demo-nudge');
 const btnReset = document.getElementById('btn-reset');
 
@@ -130,10 +128,11 @@ const liveBanner = document.getElementById('canvas-live-banner');
 const missionStepBadge = document.getElementById('mission-step-badge');
 const cargoStatusLabel = document.getElementById('cargo-status-label');
 
-const ovPath = document.getElementById('ov-path');
-const ovTrail = document.getElementById('ov-trail');
-const ovRoom = document.getElementById('ov-room');
-const ovLoop = document.getElementById('ov-loop');
+// Display & cycle options: always enabled for optimal sponsor presentation
+const ovPath = true;
+const ovTrail = true;
+const ovRoom = true;
+const ovLoop = true;
 
 // ─── Coordinate Transformations ──────────────────────────────────────────────
 function worldToCanvas(x, y) {
@@ -321,28 +320,6 @@ function resetAll() {
 
 // Direct button actions
 btnToggleMission.addEventListener('click', toggleMission);
-btnFetchBooks.addEventListener('click', () => {
-  missionActive = true;
-  drive.setGoToK(true);
-  drive.DXEnabled = true;
-  btnToggleMission.classList.remove('paused');
-  btnMissionIcon.textContent = '⏸';
-  btnMissionLabel.textContent = 'Pauză Misiune';
-  missionState = 'NAV_TO_SHELF';
-  buildShelfPath();
-  setMissionStatus('Deplasare către Raft', 1, 'Comandă directă: robotul se deplasează la raftul de cărți...');
-});
-btnDeliverDesk.addEventListener('click', () => {
-  missionActive = true;
-  drive.setGoToK(true);
-  drive.DXEnabled = true;
-  btnToggleMission.classList.remove('paused');
-  btnMissionIcon.textContent = '⏸';
-  btnMissionLabel.textContent = 'Pauză Misiune';
-  missionState = 'NAV_TO_DESK';
-  buildDeskPath();
-  setMissionStatus('Deplasare către Birou', 3, 'Comandă directă: robotul transportă marfa către birou...');
-});
 btnDemoNudge.addEventListener('click', () => {
   demoNudgeTimer = runtime + 1.6;
   demoNudgeX = 0.85;
@@ -638,12 +615,9 @@ function stepMissionStateMachine() {
           clientBubbleTimer = runtime + 4.0;
           setMissionStatus('Livrare Finalizată cu Succes!', 4, `Lot predat cu succes! Total cărți livrate: ${totalDelivered}.`);
 
-          if (ovLoop && ovLoop.checked) {
-            missionState = 'WAITING_NEXT_BATCH';
-            nextBatchTimer = runtime + 1.8;
-          } else {
-            missionState = 'COMPLETE';
-          }
+          // Continuous logistics cycle is always active for continuous live presentation!
+          missionState = 'WAITING_NEXT_BATCH';
+          nextBatchTimer = runtime + 1.8;
         }
       }
       break;
@@ -707,8 +681,8 @@ function render() {
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   drawRoomEnvironment();
-  if (ovTrail && ovTrail.checked) drawMotionTrail();
-  if (ovPath && ovPath.checked) drawTrajectorySpline();
+  drawMotionTrail();
+  drawTrajectorySpline();
   drawDeskAndClient();
   drawBookshelf();
   drawObstacles();
@@ -723,39 +697,37 @@ function drawRoomEnvironment() {
   ctx.fillStyle = '#0f1726';
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  if (ovRoom && ovRoom.checked) {
-    // Floor tile grid (30 cm tiles)
-    ctx.strokeStyle = '#182336';
-    ctx.lineWidth = 1;
-    const tileW = 35 * SCALE;
-    for (let x = 0; x < CANVAS_WIDTH; x += tileW) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
-    }
-    for (let y = 0; y < CANVAS_HEIGHT; y += tileW) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
-    }
-
-    // Outer perimeter walls with soft glow
-    ctx.strokeStyle = '#27354d';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(10, 10, CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20);
-
-    // Docking station at bottom-left
-    const dock = POSES.dock();
-    const dc = worldToCanvas(dock.x, dock.y);
-    ctx.save();
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
-    ctx.strokeRect(dc.x - 30, dc.y - 25, 60, 50);
-    ctx.fillRect(dc.x - 30, dc.y - 25, 60, 50);
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#4ade80';
-    ctx.font = '9px sans-serif';
-    ctx.fillText('⚡ STAȚIE ÎNCĂRCARE', dc.x - 45, dc.y + 35);
-    ctx.restore();
+  // Floor tile grid (30 cm tiles)
+  ctx.strokeStyle = '#182336';
+  ctx.lineWidth = 1;
+  const tileW = 35 * SCALE;
+  for (let x = 0; x < CANVAS_WIDTH; x += tileW) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
   }
+  for (let y = 0; y < CANVAS_HEIGHT; y += tileW) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
+  }
+
+  // Outer perimeter walls with soft glow
+  ctx.strokeStyle = '#27354d';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(10, 10, CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20);
+
+  // Docking station at bottom-left
+  const dock = POSES.dock();
+  const dc = worldToCanvas(dock.x, dock.y);
+  ctx.save();
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(dc.x - 30, dc.y - 25, 60, 50);
+  ctx.fillRect(dc.x - 30, dc.y - 25, 60, 50);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#4ade80';
+  ctx.font = '9px sans-serif';
+  ctx.fillText('⚡ STAȚIE ÎNCĂRCARE', dc.x - 45, dc.y + 35);
+  ctx.restore();
 }
 
 // ─── Draw Motion Trail ────────────────────────────────────────────────────────
@@ -805,172 +777,280 @@ function drawTrajectorySpline() {
   ctx.restore();
 }
 
-// ─── Draw Bookshelf / Archive ─────────────────────────────────────────────────
+// ─── Draw Bookshelf / Library Storage (Enlarged & Prominent) ───────────────────
 function drawBookshelf() {
   const shelfPose = POSES.shelf();
   const sc = worldToCanvas(shelfPose.x, shelfPose.y);
 
-  // Bookshelf cabinet on the left wall
-  const shelfLeft = sc.x - 55;
-  const shelfTop = sc.y - 75;
-  const shelfW = 45;
-  const shelfH = 150;
+  // Large Grand Bookshelf on the West Wall
+  const shelfLeft = 14;
+  const shelfTop = sc.y - 120;
+  const shelfW = 94;
+  const shelfH = 240;
+
+  ctx.save();
 
   // Drop shadow
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(shelfLeft + 4, shelfTop + 4, shelfW, shelfH);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(shelfLeft + 5, shelfTop + 5, shelfW, shelfH);
 
-  // Wood shelf body
-  ctx.fillStyle = '#452b1e';
+  // Hardwood outer frame (Rich Walnut)
+  ctx.fillStyle = '#3a2114';
   ctx.fillRect(shelfLeft, shelfTop, shelfW, shelfH);
-  ctx.strokeStyle = '#6d4530';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#5c3521';
+  ctx.lineWidth = 3;
   ctx.strokeRect(shelfLeft, shelfTop, shelfW, shelfH);
 
-  // Shelves horizontal dividers
-  ctx.fillStyle = '#2d1a10';
-  for (let y = shelfTop + 35; y < shelfTop + shelfH; y += 38) {
-    ctx.fillRect(shelfLeft + 4, y, shelfW - 8, 4);
+  // Inner back panel
+  ctx.fillStyle = '#24140b';
+  ctx.fillRect(shelfLeft + 6, shelfTop + 6, shelfW - 12, shelfH - 12);
+
+  // 4 Shelves horizontal dividers
+  const tierCount = 4;
+  const tierH = (shelfH - 16) / tierCount;
+  ctx.fillStyle = '#4a2b1a';
+  ctx.strokeStyle = '#6a3e26';
+  ctx.lineWidth = 1.5;
+  for (let t = 1; t < tierCount; t++) {
+    const sy = shelfTop + 8 + t * tierH;
+    ctx.fillRect(shelfLeft + 6, sy, shelfW - 12, 6);
+    ctx.strokeRect(shelfLeft + 6, sy, shelfW - 12, 6);
   }
 
-  // Draw books currently on shelf
-  let curY = shelfTop + 10;
-  shelfBooks.forEach((b, idx) => {
-    ctx.fillStyle = b.color;
-    ctx.fillRect(shelfLeft + 8, curY, 28, 22);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '8px sans-serif';
-    ctx.fillText(`Vol.${b.id}`, shelfLeft + 10, curY + 14);
-    curY += 38;
+  // Top tier: Reference encyclopedias & binders
+  const topTierY = shelfTop + 8;
+  const encColors = ['#1e3a8a', '#1e40af', '#1d4ed8', '#0369a1', '#0e7490', '#155e75', '#0f766e'];
+  encColors.forEach((col, i) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(shelfLeft + 9 + i * 11, topTierY + 4, 9, tierH - 12);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(shelfLeft + 9 + i * 11, topTierY + 4, 9, tierH - 12);
   });
 
-  // Shelf staging pad (where books are transferred)
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(sc.x - 8, sc.y - 30, 26, 60);
-  ctx.fillRect(sc.x - 8, sc.y - 30, 26, 60);
+  // Middle tiers: Active Mission Books waiting to be collected
+  shelfBooks.forEach((b, idx) => {
+    const bookY = shelfTop + 8 + (idx + 1) * tierH - (tierH - 10);
 
+    // Book shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(shelfLeft + 12, bookY + 3, shelfW - 24, tierH - 12);
+
+    // Vibrant book cover
+    ctx.fillStyle = b.color;
+    ctx.fillRect(shelfLeft + 10, bookY, shelfW - 24, tierH - 14);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(shelfLeft + 10, bookY, shelfW - 24, tierH - 14);
+
+    // Gold spine accent
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.fillRect(shelfLeft + 10, bookY + 2, 6, tierH - 18);
+
+    // Clear typography: Volume and Title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(`Vol.${b.id} ${b.title || ''}`, shelfLeft + 19, bookY + (tierH - 14) / 2 + 3);
+  });
+
+  // Shelf staging pad / transfer zone right where the robot arm docks
+  const padX = shelfLeft + shelfW + 2;
+  const padY = sc.y - 35;
+  const padW = 34;
+  const padH = 70;
+  ctx.strokeStyle = 'rgba(245, 158, 11, 0.85)';
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(padX, padY, padW, padH);
+  ctx.fillRect(padX, padY, padW, padH);
+  ctx.setLineDash([]);
+
+  // Staging Indicator Label
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('ZONĂ PRELUARE', padX + 2, padY - 5);
+
+  // Large Bookshelf Title
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('📚 RAFT CĂRȚI', shelfLeft - 5, shelfTop - 8);
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('📚 RAFT CENTRAL CĂRȚI', shelfLeft, shelfTop - 8);
 
   ctx.restore();
 }
 
-// ─── Draw Desk & Client Person ────────────────────────────────────────────────
+// ─── Draw Desk & Client Person (Enlarged & Prominent) ─────────────────────────
 function drawDeskAndClient() {
   const deskPose = POSES.desk();
   const dc = worldToCanvas(deskPose.x, deskPose.y);
 
-  // Executive Desk dimensions
-  const deskX = dc.x + 35;
-  const deskY = dc.y - 50;
-  const deskW = 55;
-  const deskH = 100;
+  // Large Executive Workstation
+  const deskX = dc.x + 38;
+  const deskY = dc.y - 85;
+  const deskW = 96;
+  const deskH = 170;
 
   ctx.save();
-  // Desk Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(deskX + 5, deskY + 5, deskW, deskH);
 
-  // Desk surface (Polished Mahogany Wood)
-  ctx.fillStyle = '#653b24';
+  // Desk Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(deskX + 6, deskY + 6, deskW, deskH);
+
+  // Desk Wood Surface (Deep Polished Mahogany)
+  ctx.fillStyle = '#5c331c';
   ctx.fillRect(deskX, deskY, deskW, deskH);
-  ctx.strokeStyle = '#8c5332';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#854d2b';
+  ctx.lineWidth = 3;
   ctx.strokeRect(deskX, deskY, deskW, deskH);
 
-  // Laptop on desk
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillRect(deskX + 16, deskY + 36, 22, 16);
-  ctx.fillStyle = '#0284c7';
-  ctx.fillRect(deskX + 18, deskY + 38, 18, 12); // blue glowing laptop screen
+  // Inner beveled desk edge
+  ctx.strokeStyle = '#3d2010';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(deskX + 4, deskY + 4, deskW - 8, deskH - 8);
 
-  // Coffee mug
-  ctx.fillStyle = '#ffffff';
+  // Large Executive Leather Desk Blotter
+  ctx.fillStyle = '#1c1917';
+  ctx.strokeStyle = '#44403c';
+  ctx.lineWidth = 1;
+  ctx.fillRect(deskX + 16, deskY + 28, deskW - 32, deskH - 56);
+  ctx.strokeRect(deskX + 16, deskY + 28, deskW - 32, deskH - 56);
+
+  // Workstation Dual Screens
+  // Primary Screen
+  ctx.fillStyle = '#0f172a';
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(deskX + 32, deskY + 48, 28, 22);
+  ctx.strokeRect(deskX + 32, deskY + 48, 28, 22);
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(deskX + 34, deskY + 50, 24, 18); // glowing display
+
+  // Secondary Vertical Display
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(deskX + 32, deskY + 76, 26, 36);
+  ctx.strokeStyle = '#475569';
+  ctx.strokeRect(deskX + 32, deskY + 76, 26, 36);
+  ctx.fillStyle = '#10b981';
+  ctx.fillRect(deskX + 34, deskY + 78, 22, 32); // charts & data
+
+  // Sleek Keyboard & Mouse
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(deskX + 22, deskY + 62, 7, 24);
   ctx.beginPath();
-  ctx.arc(deskX + 14, deskY + 18, 4, 0, Math.PI * 2);
+  ctx.arc(deskX + 25, deskY + 96, 3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Delivery Tray (Inbox)
-  ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
-  ctx.strokeStyle = '#22c55e';
-  ctx.lineWidth = 1.8;
+  // Coffee Mug on saucer
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.arc(deskX + 22, deskY + 18, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#94a3b8';
+  ctx.stroke();
+  ctx.fillStyle = '#78350f';
+  ctx.beginPath();
+  ctx.arc(deskX + 22, deskY + 18, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Modern Desk Lamp (warm soft glow)
+  ctx.fillStyle = '#eab308';
+  ctx.beginPath();
+  ctx.arc(deskX + 75, deskY + 18, 6, 0, Math.PI * 2);
+  ctx.fill();
+  const lampGlow = ctx.createRadialGradient(deskX + 75, deskY + 18, 4, deskX + 75, deskY + 18, 28);
+  lampGlow.addColorStop(0, 'rgba(234, 179, 8, 0.35)');
+  lampGlow.addColorStop(1, 'rgba(234, 179, 8, 0)');
+  ctx.fillStyle = lampGlow;
+  ctx.beginPath();
+  ctx.arc(deskX + 75, deskY + 18, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Large Prominent Delivery Tray (INBOX) right at the front edge of the desk
   const trayX = dc.x + 8;
-  const trayY = dc.y - 25;
-  ctx.strokeRect(trayX, trayY, 24, 50);
-  ctx.fillRect(trayX, trayY, 24, 50);
+  const trayY = dc.y - 35;
+  const trayW = 28;
+  const trayH = 70;
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.16)';
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2;
+  ctx.fillRect(trayX, trayY, trayW, trayH);
+  ctx.strokeRect(trayX, trayY, trayW, trayH);
 
   ctx.fillStyle = '#22c55e';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.fillText('INBOX', trayX + 1, trayY - 4);
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText('📥 INBOX', trayX + 2, trayY - 6);
 
-  // Draw books stacked on the delivery tray!
-  const maxVisible = 5;
+  // Stack of delivered books inside the tray
+  const maxVisible = 6;
   const visibleBooks = deskDeliveredBooks.slice(-maxVisible);
-  const stackOffset = Math.max(0, deskDeliveredBooks.length - maxVisible);
-
   visibleBooks.forEach((b, i) => {
     ctx.fillStyle = b.color;
-    ctx.fillRect(trayX + 3, trayY + 6 + i * 8, 18, 6);
+    ctx.fillRect(trayX + 3, trayY + 5 + i * 10, trayW - 6, 8);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(trayX + 3, trayY + 6 + i * 8, 18, 6);
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(trayX + 3, trayY + 5 + i * 10, trayW - 6, 8);
   });
 
   if (deskDeliveredBooks.length > 0) {
     ctx.fillStyle = '#4ade80';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.fillText(`${deskDeliveredBooks.length} Cărți`, trayX - 2, trayY + 48);
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(`${deskDeliveredBooks.length} Cărți`, trayX, trayY + trayH + 12);
   }
 
-  // Client Person (Sitting behind desk at right)
-  const px = deskX + deskW + 18;
+  // Client Person (Sitting behind the desk at the right)
+  const px = deskX + deskW + 24;
   const py = dc.y;
 
-  // Chair
-  ctx.fillStyle = '#1e293b';
+  // Ergonomic Executive Chair
+  ctx.fillStyle = '#0f172a';
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(px, py, 14, 0, Math.PI * 2);
+  ctx.arc(px, py, 18, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
 
   // Person shoulders / shirt
   ctx.fillStyle = '#0284c7';
   ctx.beginPath();
-  ctx.arc(px, py, 10, 0, Math.PI * 2);
+  ctx.arc(px, py, 13, 0, Math.PI * 2);
   ctx.fill();
 
   // Person head
   ctx.fillStyle = '#fed7aa';
   ctx.beginPath();
-  ctx.arc(px, py, 6, 0, Math.PI * 2);
+  ctx.arc(px, py, 8, 0, Math.PI * 2);
   ctx.fill();
 
   // Hair
   ctx.fillStyle = '#451a03';
   ctx.beginPath();
-  ctx.arc(px, py - 2, 6, Math.PI, Math.PI * 2);
+  ctx.arc(px, py - 3, 8, Math.PI, Math.PI * 2);
   ctx.fill();
+
+  // Client Title above desk
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('💼 BIROU CLIENT', deskX + 4, deskY - 8);
 
   // Speech bubble over person
   if (clientBubble) {
-    const bubbleX = deskX - 10;
-    const bubbleY = deskY - 32;
+    const bubbleX = deskX + deskW / 2 - 10;
+    const bubbleY = deskY - 28;
     ctx.font = 'bold 9px sans-serif';
     const textW = ctx.measureText(clientBubble).width;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-    ctx.lineWidth = 1.2;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.roundRect(bubbleX - textW / 2 + 10, bubbleY - 14, textW + 16, 20, 6);
+    if (ctx.roundRect) ctx.roundRect(bubbleX - textW / 2, bubbleY - 14, textW + 18, 22, 6);
+    else ctx.rect(bubbleX - textW / 2, bubbleY - 14, textW + 18, 22);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(clientBubble, bubbleX - textW / 2 + 18, bubbleY);
+    ctx.fillText(clientBubble, bubbleX - textW / 2 + 9, bubbleY);
   }
 
   ctx.restore();
@@ -978,7 +1058,6 @@ function drawDeskAndClient() {
 
 // ─── Draw Room Obstacles (Lounge Table, Armchair, Plant) ───────────────────────
 function drawObstacles() {
-  if (!ovRoom || !ovRoom.checked) return;
   ctx.save();
 
   // Center Lounge Table at (-10, -15)
@@ -1062,7 +1141,7 @@ function drawRobot() {
 
   // 3) Front Articulated Telescopic Arm & Gripper Jaws
   // Arm extends out the front (which is -Y in robot local space)
-  const armExtPx = armExtension * 35;
+  const armExtPx = armExtension * 45;
   ctx.save();
   // Twin metallic slide rails
   ctx.strokeStyle = '#94a3b8';
