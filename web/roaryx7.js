@@ -370,14 +370,15 @@ class Roaryx7Drive {
   }
 
   closestT(splinePoints) {
-    let closest = 100;
+    let closest = Infinity;
     let closestT = 0;
-    for (let t = 0; t <= 1.05; t += 0.05) {
-      if (this.getPoint().distanceTo(this.catmullRomSpline(splinePoints, t)) <= closest) {
-        closest = this.getPoint().distanceTo(this.catmullRomSpline(splinePoints, t));
+    for (let step = 0; step <= 20; step++) {
+      const t = step * 0.05;
+      const d = this.getPoint().distanceTo(this.catmullRomSpline(splinePoints, t));
+      if (d <= closest) {
+        closest = d;
         closestT = t;
       }
-      if (closest <= 3) break;
     }
     return closestT;
   }
@@ -407,7 +408,11 @@ class Roaryx7Drive {
     }
 
     this.t = this.i + this.localT;
-    if (this.localT >= 1 && this.t <= this.length - 3.3) this.i++;
+    if (this.localT >= 0.95 && this.i < this.length - 4) {
+      if (this.localT >= 1 || (this.splinePoints && this.getPoint().distanceTo(this.catmullRomSpline(this.splinePoints, 1)) < 7.5)) {
+        this.i++;
+      }
+    }
 
     if (goToValuesArr.length > 1) {
       this.splinePoints = [
@@ -498,17 +503,18 @@ class Roaryx7Drive {
 
     this.powerMixer = 0;
     const endTarget = goToValuesArr[goToValuesArr.length - 1].target;
-    if (this.distanceToEnd <= 6.4 || (endTarget.distanceTo(this.futurePos) < 33 && vel.radius() < 33)) {
+    this.futurePos = this.getPoint().add(vel.divide(8));
+    const onLastSeg = goToValuesArr.length <= 4 || this.i >= this.length - 4;
+    if (onLastSeg && (this.distanceToEnd <= 6.4 || endTarget.distanceTo(this.futurePos) <= 8 || (endTarget.distanceTo(this.futurePos) < 25 && vel.radius() < 33))) {
       this.doneTranslationSpline = true;
     } else if (!this.doneTranslationSpline) {
       this.breakPower = twoXSqrd(this.breakInterpolator, 0.8);
-      this.futurePos = this.getPoint().add(vel.divide(8));
 
-      if (endTarget.distanceTo(this.futurePos) < 8) {
+      if (onLastSeg && endTarget.distanceTo(this.futurePos) < 8) {
         this.BRAKEPLS = true;
         this.breakPower = 0;
       }
-      if (endTarget.distanceTo(this.futurePos) < 35) {
+      if (onLastSeg && endTarget.distanceTo(this.futurePos) < 35) {
         this.breakPower = Math.min(this.breakPower, 0.35);
       } else {
         this.BRAKEPLS = false;
@@ -661,7 +667,10 @@ class Roaryx7Drive {
       this.doneTranslation = false;
     }
 
-    if (this.doneTranslation && this.doneHeadingGoTo && this.doneGoTo) {
+    const hasStick = Math.abs(this.mainDrivePowers.FLPow) + Math.abs(this.mainDrivePowers.FRPow) +
+                     Math.abs(this.mainDrivePowers.BLPow) + Math.abs(this.mainDrivePowers.BRPow) > 0.04;
+    if ((this.doneTranslation && this.doneHeadingGoTo && this.doneGoTo) || (this.doneGoTo && hasStick)) {
+      this.goTo.FLPow = 0; this.goTo.FRPow = 0; this.goTo.BLPow = 0; this.goTo.BRPow = 0;
       this.fastSendPower();
       return;
     }
@@ -738,6 +747,7 @@ class Roaryx7Drive {
       this.mainDrivePowers.FRPow = 0;
       this.mainDrivePowers.BLPow = 0;
       this.mainDrivePowers.BRPow = 0;
+      this._composeAndSend();
       return;
     }
 
@@ -763,6 +773,7 @@ class Roaryx7Drive {
     this.mainDrivePowers.FRPow = FRPow;
     this.mainDrivePowers.BLPow = BLPow;
     this.mainDrivePowers.BRPow = BRPow;
+    this._composeAndSend();
   }
 
   // ── End-effector offset kinematics (Roaryx7.java:2268-2456) ──────────
@@ -890,13 +901,13 @@ const MechGlobals = Object.freeze({
 
 // Globals.Kirby.Codes — "Farul" status indicator LED
 const FarulCodes = Object.freeze({
-  OFF:    { code: 0,     name: 'OFF',    hex: '#484f58', reason: 'Idle' },
-  RED:    { code: 0.283, name: 'RED',    hex: '#f85149', reason: 'Not ready / out of zone' },
-  YELLOW: { code: 0.388, name: 'YELLOW', hex: '#d29922', reason: 'Partial ready (1 condition met)' },
-  GREEN:  { code: 0.5,   name: 'GREEN',  hex: '#3fb950', reason: 'READY (in zone + mechanism ready)' },
-  INDIGO: { code: 0.66,  name: 'INDIGO', hex: '#6e7681', reason: 'Cycle complete!' },
-  PURPLE: { code: 0.71,  name: 'PURPLE', hex: '#bc8cff', reason: 'New element detected!' },
-  WHITE:  { code: 1.0,   name: 'WHITE',  hex: '#f0f6fc', reason: 'SLOTS FULL — go score!' },
+  OFF:    { code: 0,     name: 'OPRIT',  hex: '#484f58', reason: 'În așteptare' },
+  RED:    { code: 0.283, name: 'ROȘU',   hex: '#f85149', reason: 'În afara zonei de scor' },
+  YELLOW: { code: 0.388, name: 'GALBEN', hex: '#d29922', reason: 'În zonă / În pregătire' },
+  GREEN:  { code: 0.5,   name: 'VERDE',  hex: '#3fb950', reason: 'PREGĂTIT DE SCOR!' },
+  INDIGO: { code: 0.66,  name: 'INDIGO', hex: '#6e7681', reason: 'Ciclu finalizat' },
+  PURPLE: { code: 0.71,  name: 'MOV',    hex: '#bc8cff', reason: 'Element nou preluat!' },
+  WHITE:  { code: 1.0,   name: 'ALB',    hex: '#f0f6fc', reason: 'MAGAZIE PLINĂ (3/3)!' },
 });
 
 /**
@@ -1026,6 +1037,19 @@ class RoaryOutTake {
     this.clawState = 'OPEN';
   }
 
+  reset() {
+    this.outExtCm = 0;
+    this.targetOutExtCm = 0;
+    this.bascState = 'LOAD';
+    this.clawState = 'OPEN';
+    this.holdingColors = [];
+    this.velocityEnabled = false;
+    this.velocityDone = false;
+    this.turretDone = true;
+    this.flashTime = 0;
+    this.farul = FarulCodes.RED;
+  }
+
   /** Step physical slide extension + readiness flags every tick (non-blocking iterative control). */
   step(dt, drive) {
     const target = this.velocityEnabled ? MechGlobals.RAIL_MAX_CM : this.targetOutExtCm;
@@ -1116,6 +1140,39 @@ class RoaryIntake {
     this.reserveIntake = false;
 
     // Launch / Score paddle sequence (IntakeKirby.java:416-507)
+    this.launchFirstTime = true;
+    this.launchDone = true;
+    this.currentActionLaunch = 0;
+    this.delayTimeLaunch = 0;
+    this.currentPaddle = 0;
+    this.launchCondition = false;
+    this.shotNr = 0;
+  }
+
+  reset() {
+    this.intakePower = 0;
+    this.motorOutput = 0;
+    this.currentAmps = 0.1;
+    this.hExtCm = 0;
+    this.targetHExtCm = 0;
+    this.clawClosed = false;
+    this.MID = PaddleState.LOAD;
+    this.LEFT = PaddleState.LOAD;
+    this.RIGHT = PaddleState.LOAD;
+    this.ocTime = 0;
+    this.jamSimulated = false;
+    this.spitTime = 0;
+    this.hasSpit = false;
+    this.unstuckFirstTime = false;
+    this.doneUnstuck = true;
+    this.stuckAction = 0;
+    this.stuckTime = 0;
+    this.unloadFirstTime = false;
+    this.unloadDone = true;
+    this.currentActionUnload = 0;
+    this.delayTimeUnload = 0;
+    this.safetyTime = 0;
+    this.reserveIntake = false;
     this.launchFirstTime = true;
     this.launchDone = true;
     this.currentActionLaunch = 0;
@@ -1245,7 +1302,7 @@ class RoaryIntake {
       this.currentActionUnload = 6;
     }
 
-    // Action 2: Extend rear outtake rail + move slot into carrier
+    // Action 2: Extend rear outtake rail + transfer first occupied slot into carrier
     if (this.currentActionUnload === 2 && runtime > this.delayTimeUnload) {
       this.outtake.startLauncher();
       this.setPowerIntakeAuto(-0.71);
@@ -1260,8 +1317,15 @@ class RoaryIntake {
       this.currentActionUnload++;
     }
 
-    // Action 3: Wait for transfer clearance
+    // Action 3: Transfer remaining occupied slots into carrier & wait for clearance
     if (this.currentActionUnload === 3 && runtime > this.delayTimeUnload) {
+      for (let s = 0; s < 3; s++) {
+        if (this.sensors.slots[s] !== inIndexer.NOTHING) {
+          this.updateIntake(s, PaddleState.UNLOAD);
+          this.outtake.holdingColors.push(this.sensors.slots[s]);
+          this.sensors.slots[s] = inIndexer.NOTHING;
+        }
+      }
       this.setPowerIntakeAuto(-0.64);
       this.delayTimeUnload = runtime + 0.24;
       this.safetyTime = runtime + 1.7;
@@ -1271,11 +1335,18 @@ class RoaryIntake {
     // Action 4: Wait for outtake extension (`velocityDone`) or safetyTime, then release into basket!
     if (this.currentActionUnload === 4 && runtime > this.delayTimeUnload && (this.outtake.velocityDone || runtime > this.safetyTime)) {
       this.outtake.clawState = 'OPEN_BASKET';
-      const outPose = drive.robotToOutTakePos(drive.getPose(), this.outtake.outExtCm);
+      const outPose = drive.robotToOutTakePos(new Pose2d(drive.X, drive.Y, drive.getH() - 180), this.outtake.outExtCm);
+      let dropIdx = 0;
       while (this.outtake.holdingColors.length > 0) {
         const col = this.outtake.holdingColors.shift();
-        const jitter = (Math.random() - 0.5) * 6;
-        this.outtake.scoredDrops.push({ x: outPose.x + jitter, y: outPose.y + jitter, color: col, t: runtime });
+        const spread = (dropIdx - 1) * 5.5;
+        this.outtake.scoredDrops.push({
+          x: outPose.x + spread,
+          y: outPose.y - spread * 0.4,
+          color: col,
+          t: runtime,
+        });
+        dropIdx++;
       }
       this.delayTimeUnload = runtime + 0.3;
       this.safetyTime = runtime + 0.8;
@@ -1371,7 +1442,7 @@ class RoaryIntake {
     if (this.currentActionLaunch === 5 && runtime > this.delayTimeLaunch) {
       const col = this.sensors.slots[this.currentPaddle];
       this.sensors.slots[this.currentPaddle] = inIndexer.NOTHING;
-      const outPose = drive.robotToOutTakePos(drive.getPose(), this.outtake.outExtCm);
+      const outPose = drive.robotToOutTakePos(new Pose2d(drive.X, drive.Y, drive.getH() - 180), this.outtake.outExtCm);
       const offset = (this.shotNr - 1) * 5.5;
       this.outtake.scoredDrops.push({
         x: outPose.x + offset,

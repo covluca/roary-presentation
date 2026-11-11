@@ -1,101 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RoaryX7 — Holonomic Drive &amp; Subsystem Architecture Demo</title>
+  <title>RoaryX7 — Prezentare Interactivă · Sistem de Control pentru Șasiu Holonomic</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
+    <!-- ── Top Sponsor Presentation Header ── -->
     <header id="topbar">
       <div class="brand">
         <div class="logo-badge">RX7</div>
         <div>
-          <h1>RoaryX7 <span class="tag-pill">Decode 2D Showcase</span></h1>
-          <p class="subtitle">Always-running holonomic drive · Catmull-Rom <code>splineToDX</code> · non-blocking state managers</p>
+          <h1>RoaryX7 <span class="tag-pill">Prezentare Interactivă Sponsor</span></h1>
+          <p class="subtitle">
+            Arhitectură de navigație omnidirecțională, fuziune live <b>Autonom + Pilot</b> și automatizare de subsisteme pentru șasiu holonomic
+          </p>
         </div>
       </div>
 
       <div id="status-strip">
-        <div class="stat-chip" id="chip-gotok">
-          <span class="dot" id="dot-gotok"></span>
+        <div class="stat-chip on" id="chip-gotok" title="Click sau tasta B pentru a comuta ghidarea autonomă">
+          <span class="dot on" id="dot-gotok"></span>
           <div>
-            <div class="chip-label">goToK (Key B)</div>
-            <div class="chip-val" id="goToK-indicator">goToK = 0 · stick only</div>
+            <div class="chip-label">Ghidare Autonomă</div>
+            <div class="chip-val" id="goToK-indicator">ACTIVĂ · Autonom + Pilot</div>
           </div>
         </div>
         <div class="stat-chip">
           <span class="dot farul-dot" id="dot-farul"></span>
           <div>
-            <div class="chip-label">Farul LED (<code>statusCode</code>)</div>
-            <div class="chip-val" id="farul-indicator">RED · Out of zone</div>
+            <div class="chip-label">LED Stare Robot („Farul”)</div>
+            <div class="chip-val" id="farul-indicator">ROȘU · În afara zonei</div>
           </div>
         </div>
         <div class="stat-chip">
           <div>
-            <div class="chip-label">AUTO_STATE</div>
-            <div class="chip-val" id="chip-autostate">MANUAL_SPLINE</div>
-          </div>
-        </div>
-        <div class="stat-chip">
-          <div>
-            <div class="chip-label">Loop</div>
-            <div class="chip-val"><span id="tel-hz">60</span> Hz · <span id="tel-runtime">0.0</span>s</div>
+            <div class="chip-label">Regim Curent</div>
+            <div class="chip-val" id="chip-autostate">Navigație pe Curbă</div>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- ── Interactive Scenario Presets ── -->
-    <section id="preset-bar">
-      <span class="preset-title">Scenarios:</span>
-      <button class="preset-btn active" data-preset="spline" title="Default KirbyAirRiders 6-point spline path">
-        1 · Spline Follower (<code>splineToDX</code>)
-      </button>
-      <button class="preset-btn" data-preset="full-auto" title="Full KirbyAirRiders AUTO_STATE cycle: START → LAUNCH → LOAD_SPIKE (+tremor) → LAUNCH → PARK">
-        2 · Full Auto Cycle (<code>AUTO_STATE</code> FSM)
-      </button>
-      <button class="preset-btn" data-preset="intake-lab" title="Drive over field artifacts with Intake ON (-1), watch 3-slot round-robin color sensors, spit-on-full &amp; OC jam protection">
-        3 · Intake &amp; 3-Slot Indexer Lab
-      </button>
-      <button class="preset-btn" data-preset="offset-ik" title="Front claw (robotToClawPos) &amp; rear outTake (robotToOutTakePos) slide offset kinematics + 6-step unloadManager">
-        4 · Slide Offset IK &amp; <code>unloadManager</code>
-      </button>
+    <!-- ── 5-Chapter Interactive Presentation Stepper ── -->
+    <section id="preset-bar" aria-label="Capitole Prezentare">
+      <button class="nav-step-btn" id="btn-prev-chapter" title="Capitolul anterior">◀</button>
+      <div class="chapter-list">
+        <button class="preset-btn active" data-preset="spline" data-ch="1">
+          <span class="ch-num">01</span>
+          <span class="ch-txt">
+            <strong>Șasiu Holonomic &amp; Fuziune Live</strong>
+            <small>Omnidirecțional · Autonom + Pilot simultan</small>
+          </span>
+        </button>
+        <button class="preset-btn" data-preset="vectors" data-ch="2">
+          <span class="ch-num">02</span>
+          <span class="ch-txt">
+            <strong>Curbe Catmull-Rom &amp; Vectori</strong>
+            <small>Navigație fără oprire &amp; corecție la 60 Hz</small>
+          </span>
+        </button>
+        <button class="preset-btn" data-preset="offset-ik" data-ch="3">
+          <span class="ch-num">03</span>
+          <span class="ch-txt">
+            <strong>Cinematică Glisiere (2D IK)</strong>
+            <small>Alinierea ghearei &amp; cuvei direct pe țintă</small>
+          </span>
+        </button>
+        <button class="preset-btn" data-preset="intake-lab" data-ch="4">
+          <span class="ch-num">04</span>
+          <span class="ch-txt">
+            <strong>Subsisteme &amp; State Machines</strong>
+            <small>Indexor 3 sloturi, anti-blocaj &amp; transfer</small>
+          </span>
+        </button>
+        <button class="preset-btn" data-preset="full-auto" data-ch="5">
+          <span class="ch-num">05</span>
+          <span class="ch-txt">
+            <strong>Misiune Autonomă Completă</strong>
+            <small>Ciclu cap-coadă: Colectare → Scor → Parcare</small>
+          </span>
+        </button>
+      </div>
+      <button class="nav-step-btn" id="btn-next-chapter" title="Capitolul următor">▶</button>
     </section>
 
     <div id="main">
-      <!-- ── Left column: Field canvas + Layer toggles + Power Equation ── -->
+      <!-- ── Left column: Full-scale 2D Arena + Visual Power Fusion ── -->
       <div id="left-col">
         <div id="canvas-wrap">
           <div id="canvas-toolbar">
             <div class="layer-group">
-              <span class="toolbar-label">2D Overlays:</span>
-              <label class="toggle-pill"><input type="checkbox" id="ov-vectors" checked /> <span>Force Vectors (<code>N + D + P</code>)</span></label>
-              <label class="toggle-pill"><input type="checkbox" id="ov-zones" checked /> <span>Triangle Zones</span></label>
-              <label class="toggle-pill"><input type="checkbox" id="ov-offsets" checked /> <span>Claw / OutTake Slides</span></label>
-              <label class="toggle-pill"><input type="checkbox" id="ov-trail" checked /> <span>Odometry Trail</span></label>
-              <label class="toggle-pill"><input type="checkbox" id="ov-lookahead" /> <span><code>lookAhead</code> / <code>futurePos</code></span></label>
+              <span class="toolbar-label">Straturi:</span>
+              <label class="toggle-pill"><input type="checkbox" id="ov-vectors" checked /> <span>Vectori</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-offsets" checked /> <span>Glisiere</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-zones" checked /> <span>Zone</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-trail" checked /> <span>Urmă</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-loop" checked /> <span>🔄 Patrulare</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-lookahead" /> <span>Anticipare</span></label>
             </div>
-            <button id="btn-clear-trail" class="mini-btn" title="Clear robot trajectory trail &amp; respawn field elements">↺ Respawn Field</button>
+            <button id="btn-clear-trail" class="mini-btn" title="Refă elementele de pe teren și șterge urma">↺ Refă Obiectele</button>
           </div>
 
-          <canvas id="field" width="640" height="640"></canvas>
+          <div class="canvas-stage">
+            <canvas id="field" width="640" height="640"></canvas>
+          </div>
 
           <div id="canvas-legend">
-            <span><i class="lg-swatch" style="background:#f0b429"></i><code>target</code> + tangent (<code>derivative</code>)</span>
-            <span><i class="lg-swatch" style="background:#ff7b72"></i><code>normalPower</code> (push to curve)</span>
-            <span><i class="lg-swatch" style="background:#3fb950"></i><code>derivativePower</code> (along curve)</span>
-            <span><i class="lg-swatch" style="background:#d2a8ff"></i><code>projectionPower</code> (centripetal)</span>
-            <span><i class="lg-swatch" style="background:#58a6ff"></i><code>totalPower</code></span>
+            <span><i class="lg-swatch" style="background:#f0b429"></i>Țintă pe curbă + direcție (tangentă)</span>
+            <span><i class="lg-swatch" style="background:#3fb950"></i>Propulsie pe curbă (înaintare)</span>
+            <span><i class="lg-swatch" style="background:#ff7b72"></i>Corecție abatere (readucere pe traseu)</span>
+            <span><i class="lg-swatch" style="background:#d2a8ff"></i>Anticipare viraj (forță centripetă)</span>
+            <span><i class="lg-swatch" style="background:#58a6ff"></i>Vector rezultant de deplasare</span>
           </div>
         </div>
 
-        <!-- Live Roary Power Composition Bar -->
+        <!-- Visual Holonomic Wheel Fusion Card -->
         <div id="composition-card" class="card">
           <div class="card-head">
-            <h3>Roary Power Composition — <code>motor = goTo · goToK + mainDrivePowers</code></h3>
-            <span class="badge" id="comp-state-badge">tel-done</span>
+            <h3>Fuziune Live pe Cele 4 Roți Holonomice — <span class="hl-text">Autonom + Pilot în Timp Real</span></h3>
+            <span class="badge" id="comp-state-badge">În mișcare</span>
           </div>
           <div id="wheel-bars">
             <div class="wbar-row" data-w="FL">
@@ -105,7 +131,7 @@
                 <div class="wbar-goto" id="wbar-fl-goto"></div>
                 <div class="wbar-stick" id="wbar-fl-stick"></div>
               </div>
-              <span class="wbar-formula" id="wbar-fl-txt">0.00·0 + 0.00</span>
+              <span class="wbar-formula" id="wbar-fl-txt">Auto 0.00 + Pilot 0.00</span>
             </div>
             <div class="wbar-row" data-w="FR">
               <span class="wbar-name" id="wheel-fr">FR: 0.00</span>
@@ -114,7 +140,7 @@
                 <div class="wbar-goto" id="wbar-fr-goto"></div>
                 <div class="wbar-stick" id="wbar-fr-stick"></div>
               </div>
-              <span class="wbar-formula" id="wbar-fr-txt">0.00·0 + 0.00</span>
+              <span class="wbar-formula" id="wbar-fr-txt">Auto 0.00 + Pilot 0.00</span>
             </div>
             <div class="wbar-row" data-w="BL">
               <span class="wbar-name" id="wheel-bl">BL: 0.00</span>
@@ -123,7 +149,7 @@
                 <div class="wbar-goto" id="wbar-bl-goto"></div>
                 <div class="wbar-stick" id="wbar-bl-stick"></div>
               </div>
-              <span class="wbar-formula" id="wbar-bl-txt">0.00·0 + 0.00</span>
+              <span class="wbar-formula" id="wbar-bl-txt">Auto 0.00 + Pilot 0.00</span>
             </div>
             <div class="wbar-row" data-w="BR">
               <span class="wbar-name" id="wheel-br">BR: 0.00</span>
@@ -132,171 +158,68 @@
                 <div class="wbar-goto" id="wbar-br-goto"></div>
                 <div class="wbar-stick" id="wbar-br-stick"></div>
               </div>
-              <span class="wbar-formula" id="wbar-br-txt">0.00·0 + 0.00</span>
+              <span class="wbar-formula" id="wbar-br-txt">Auto 0.00 + Pilot 0.00</span>
             </div>
           </div>
           <div class="comp-legend">
-            <span><i class="lg-box goto-box"></i><code>goTo · goToK</code> (Autonomous spline / goToV2)</span>
-            <span><i class="lg-box stick-box"></i><code>mainDrivePowers</code> (TeleOp stick — blends live even during Auto!)</span>
+            <span><i class="lg-box goto-box"></i><b>Ghidare Autonomă Roary</b> (urmărire curbă &amp; aliniere)</span>
+            <span><i class="lg-box stick-box"></i><b>Intervenție Pilot</b> (WASD / Joystick — se adună peste autonomie fără a o opri!)</span>
           </div>
         </div>
       </div>
 
-      <!-- ── Right column: Controls, Tabs (Drive & Waypoints | Subsystems & FSM | Math & Telemetry) ── -->
+      <!-- ── Right column: Guided Presentation Card + Interactive Sandbox ── -->
       <div id="panel">
-        <!-- Primary Action Bar (always visible) -->
+        <!-- Chapter Story / Sponsor Pitch Card (updates dynamically per chapter) -->
+        <div id="pitch-card" class="card pitch-highlight">
+          <div class="pitch-top">
+            <span class="pitch-tag" id="pitch-ch-badge">CAPITOLUL 1 DIN 5</span>
+            <span class="pitch-hint">Prezentare Interactivă</span>
+          </div>
+          <h2 id="pitch-title">De ce Roary pe un Șasiu Holonomic?</h2>
+          <p id="pitch-lead">
+            Spre deosebire de roboții clasici care trebuie să se oprească pentru a vira, un <b>șasiu holonomic</b> condus de <b>Roary</b> se deplasează omnidirecțional (înainte, lateral și rotație simultan), în timp ce pilotul și algoritmul autonom colaborează în timp real pe aceleași roți.
+          </p>
+          <ul class="pitch-bullets" id="pitch-bullets">
+            <li><b>Mișcare pe 3 axe simultan:</b> Translație pe orice direcție + orientare independentă a robotului către țintă.</li>
+            <li><b>Fuziune Live (Autonom + Pilot):</b> Pilotul poate ocoli un obstacol din mers (cu WASD sau joystick-ul), iar Roary readuce automat robotul pe traiectoria ideală.</li>
+            <li><b>Interacțiune directă:</b> Trage punctele de pe teren sau apasă butonul de mai jos pentru a vedea ocolirea unui obstacol în timp real!</li>
+          </ul>
+          <div class="pitch-actions" id="pitch-actions">
+            <button class="cta-btn" id="btn-demo-nudge">👋 Simulează Ocolire Obstacol (Impuls Pilot)</button>
+            <button class="cta-btn secondary" id="btn-demo-push">💥 Simulează Împingere Laterală pe Curbă</button>
+          </div>
+        </div>
+
+        <!-- Primary Control Bar -->
         <div id="auto-controls" class="card">
           <div id="btn-row">
-            <button id="btn-start-auto" title="Shortcut: B">▶ Start Auto (B)</button>
-            <button id="btn-full-fsm" title="Run multi-stage AUTO_STATE sequence">⚡ Auto FSM</button>
-            <button id="btn-reset" title="Shortcut: R">⟲ Reset</button>
+            <button id="btn-start-auto" class="active" title="Comută ghidarea autonomă (Tasta B)">■ Oprește Autonom (B)</button>
+            <button id="btn-full-fsm" title="Pornește misiunea autonomă cap-coadă">⚡ Misiune Completă</button>
+            <button id="btn-reset" title="Resetează poziția (Tasta R)">⟲ Reset</button>
           </div>
           <div id="kbd-bar">
-            <span class="kbd-chip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</span>
-            <span class="kbd-chip"><kbd>Q</kbd><kbd>E</kbd> Rotate</span>
-            <span class="kbd-chip"><kbd>B</kbd> goToK</span>
-            <span class="kbd-chip"><kbd>I</kbd> Intake</span>
-            <span class="kbd-chip"><kbd>X</kbd> Score/Launch</span>
-            <span class="kbd-chip"><kbd>U</kbd> Unload FSM</span>
-            <span class="kbd-chip"><kbd>J</kbd> Jam OC</span>
+            <span class="kbd-chip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Translație</span>
+            <span class="kbd-chip"><kbd>Q</kbd><kbd>E</kbd> Rotație</span>
+            <span class="kbd-chip"><kbd>Click Obiect</kbd> Trimite Gheara</span>
+            <span class="kbd-chip"><kbd>Trage Punct</kbd> Modifică Curba</span>
           </div>
         </div>
 
-        <!-- Panel Navigation Tabs -->
+        <!-- Interactive Module Selector Tabs -->
         <div id="panel-tabs">
-          <button class="tab-btn active" data-tab="tab-subsystems">Subsystems &amp; FSM</button>
-          <button class="tab-btn" data-tab="tab-drive">Stick &amp; Waypoints</button>
-          <button class="tab-btn" data-tab="tab-telemetry">Roary Internals</button>
+          <button class="tab-btn active" data-tab="tab-drive">1 · Pilotare &amp; Traiectorii</button>
+          <button class="tab-btn" data-tab="tab-subsystems">2 · Subsisteme &amp; Automatizări</button>
+          <button class="tab-btn" data-tab="tab-telemetry">3 · Date Tehnice</button>
         </div>
 
-        <!-- ── TAB 1: SUBSYSTEM MANAGERS & STATE MACHINES ── -->
-        <div class="tab-pane active" id="tab-subsystems">
-          <!-- OpMode AUTO_STATE machine -->
-          <div class="card">
-            <div class="card-head">
-              <h3>1 · OpMode State Machine (<code>KirbyAirRiders.AUTO_STATE</code>)</h3>
-              <span class="badge" id="fsm-cycle-badge">cycleNR = 0</span>
-            </div>
-            <p class="hint">
-              Non-blocking <code>switch(AUTO)</code> with <code>hasStarted</code> entry guard,
-              <code>currentAction</code> sub-steps, <code>delayTime</code> &amp; <code>safetyTime</code>,
-              plus <code>tremor</code> oscillation (<code>sendPower</code> in Roary space) when collecting.
-            </p>
-            <div class="fsm-flow" id="fsm-auto-nodes">
-              <span class="fsm-node" data-st="IDLE">MANUAL_SPLINE</span>
-              <span class="fsm-arrow">→</span>
-              <span class="fsm-node" data-st="START">START</span>
-              <span class="fsm-arrow">→</span>
-              <span class="fsm-node" data-st="LAUNCH">LAUNCH</span>
-              <span class="fsm-arrow">⇄</span>
-              <span class="fsm-node" data-st="LOAD_SPIKE">LOAD_SPIKE <small>(+tremor)</small></span>
-              <span class="fsm-arrow">→</span>
-              <span class="fsm-node" data-st="PARK">PARK</span>
-            </div>
-            <div class="fsm-detail-bar" id="fsm-auto-detail">
-              Mode: Single-path <code>splineToDX(TARGET, vel)</code> → <code>goToV2</code>. Click <b>⚡ Auto FSM</b> or Scenario 2 for full cycle.
-            </div>
-          </div>
-
-          <!-- Sensors + 3-Slot Indexer Manager -->
-          <div class="card">
-            <div class="card-head">
-              <h3>2 · <code>Sensors</code> — 3-Slot Indexer &amp; Round-Robin Polling</h3>
-              <span class="badge" id="sensor-poll-badge">loopNr % 3 = 0</span>
-            </div>
-            <p class="hint">
-              Polls 1 color/distance sensor per tick (<code>updateSlots(loopNr % 3)</code>).
-              When 3/3 fill outside the triangle zone, triggers 0.24s auto-spit (<code>hasSpit</code>) &amp; flashes Farul <b>WHITE</b>.
-            </p>
-            <div id="slot-cards">
-              <div class="slot-card" id="slot-0">
-                <div class="slot-hdr">Slot 0 · MID</div>
-                <div class="slot-orb" id="slot-orb-0"></div>
-                <div class="slot-val" id="slot-val-0">NOTHING</div>
-                <div class="slot-paddle" id="slot-pad-0">Paddle: LOAD</div>
-              </div>
-              <div class="slot-card" id="slot-1">
-                <div class="slot-hdr">Slot 1 · LEFT</div>
-                <div class="slot-orb" id="slot-orb-1"></div>
-                <div class="slot-val" id="slot-val-1">NOTHING</div>
-                <div class="slot-paddle" id="slot-pad-1">Paddle: LOAD</div>
-              </div>
-              <div class="slot-card" id="slot-2">
-                <div class="slot-hdr">Slot 2 · RIGHT</div>
-                <div class="slot-orb" id="slot-orb-2"></div>
-                <div class="slot-val" id="slot-val-2">NOTHING</div>
-                <div class="slot-paddle" id="slot-pad-2">Paddle: LOAD</div>
-              </div>
-            </div>
-            <div class="sub-btn-row">
-              <button class="sub-btn" id="btn-fill-slots" title="sensors.fillSlotsRobot()">Fill 3 Slots</button>
-              <button class="sub-btn" id="btn-wipe-slots" title="sensors.wipeSlots()">Wipe Slots</button>
-              <button class="sub-btn" id="btn-cycle-motif" title="Motif order for launchControl(additional, motif)">Motif: <b id="motif-val">1 (G·P·P)</b></button>
-            </div>
-          </div>
-
-          <!-- Intake Manager + OC Protection + Unstuck -->
-          <div class="card">
-            <div class="card-head">
-              <h3>3 · <code>Intake</code> Manager, <code>ocProtection</code> &amp; <code>Unstuck</code></h3>
-              <span class="badge" id="intake-amps-badge">0.1 A</span>
-            </div>
-            <div class="sub-btn-row">
-              <button class="sub-btn" id="btn-intake-eat" title="Shortcut: I — setPowerIntakeAuto(-1) ('MINUS MANANCA')">⬇ Intake (-1)</button>
-              <button class="sub-btn" id="btn-intake-stop" title="setPowerIntakeAuto(0)">■ Stop (0)</button>
-              <button class="sub-btn" id="btn-intake-spit" title="setPowerIntakeAuto(+1)">⬆ Spit (+1)</button>
-              <button class="sub-btn warn" id="btn-jam" title="Shortcut: J — Spike current > 7.1A to trigger ocProtection() + Unstuck()">⚡ Jam (&gt;7.1A)</button>
-            </div>
-            <div class="slider-row">
-              <label for="slider-hext">Front Slide <code>hExt</code> (<code>robotToClawPos</code>):</label>
-              <input type="range" id="slider-hext" min="0" max="37" step="1" value="0" />
-              <span class="slider-val" id="val-hext">0 cm</span>
-            </div>
-            <div class="fsm-detail-bar" id="intake-status-bar">
-              Rollers: 0.00 · OC Protection: OK (&lt;7.1A) · Unstuck: IDLE
-            </div>
-          </div>
-
-          <!-- OutTake + UnloadManager + LaunchControl -->
-          <div class="card">
-            <div class="card-head">
-              <h3>4 · <code>unloadManager</code> (6-step) &amp; <code>launchControl</code> (5-step)</h3>
-              <span class="badge" id="outtake-ready-badge">IDLE</span>
-            </div>
-            <p class="hint">
-              2D top-down view of the multi-step transfer sequences: reserves intake, extends the rear
-              <code>outTake</code> slide (<code>robotToOutTakePos</code>), cycles paddles/claw, and drops elements on the field.
-            </p>
-            <div class="sub-btn-row">
-              <button class="sub-btn accent" id="btn-launch-seq" title="Shortcut: X — Run 5-step launchControl(additional, motif)">▶ <code>launchControl</code> (X)</button>
-              <button class="sub-btn accent" id="btn-unload-seq" title="Shortcut: U — Run 6-step unloadManager()">▶ <code>unloadManager</code> (U)</button>
-              <button class="sub-btn" id="btn-snap-claw" title="Use clawToRobotPos() to compute robot target pose for the nearest field element">🎯 <code>clawToRobotPos</code></button>
-            </div>
-            <div class="slider-row">
-              <label for="slider-outext">Rear Slide <code>outExt</code> (<code>robotToOutTakePos</code>):</label>
-              <input type="range" id="slider-outext" min="0" max="18" step="1" value="0" />
-              <span class="slider-val" id="val-outext">0 cm</span>
-            </div>
-            <div class="fsm-flow compact" id="fsm-unload-steps">
-              <span class="fsm-node" data-ustep="1">1:Reserve</span>
-              <span class="fsm-node" data-ustep="2">2:Extend+Shift</span>
-              <span class="fsm-node" data-ustep="3">3:Clearance</span>
-              <span class="fsm-node" data-ustep="4">4:Drop</span>
-              <span class="fsm-node" data-ustep="5">5:unloadDone</span>
-              <span class="fsm-node" data-ustep="6">6:Retract</span>
-            </div>
-            <div class="fsm-detail-bar" id="outtake-status-bar">
-              launchDone: true · unloadDone: true · Bascula: LOAD · Claw: OPEN
-            </div>
-          </div>
-        </div>
-
-        <!-- ── TAB 2: STICK & WAYPOINT EDITOR ── -->
-        <div class="tab-pane" id="tab-drive">
+        <!-- ── TAB 1: PILOTARE, TRASEE & CINEMATICĂ GLISIERE ── -->
+        <div class="tab-pane active" id="tab-drive">
+          <!-- Virtual Gamepad + Trajectory Presets -->
           <div id="teleop-controls" class="card">
             <div class="card-head">
-              <h3>Virtual Gamepad Stick (<code>mainDrive</code>)</h3>
-              <span class="badge" id="power-ramp-badge">power = 1.00</span>
+              <h3>Pilotare Omnidirecțională &amp; Trasee</h3>
+              <span class="badge" id="power-ramp-badge">Viteză: 100%</span>
             </div>
             <div class="joy-layout">
               <div id="joystick-wrap">
@@ -309,52 +232,195 @@
                   <span id="joy-r">R: 0.00</span>
                 </div>
                 <p class="hint">
-                  Drag stick or use <b>WASD</b> (0.60) + <b>Q/E</b> (0.50).
-                  Above <code>|speed| &gt; 0.89</code> (full stick drag), <code>mainDrive</code> ramps
-                  <code>this.power</code> up to <code>1.70</code>!
+                  Trage de joystick cu mouse-ul sau folosește <b>WASD</b> (deplasare) + <b>Q/E</b> (rotație).
+                  Funcționează <b>chiar și în timpul autonomiei</b>!
                 </p>
+                <div class="sub-btn-row">
+                  <button class="sub-btn" id="btn-path-slalom">〰 Traseu Slalom</button>
+                  <button class="sub-btn" id="btn-path-circuit">∞ Circuit Amplu</button>
+                  <button class="sub-btn" id="btn-path-spin">↻ Piruetă Holonomică</button>
+                </div>
               </div>
             </div>
           </div>
 
+          <!-- Offset Kinematics (Claw & OutTake 2D Slides) -->
+          <div class="card">
+            <div class="card-head">
+              <h3>Cinematică de Offset — Glisiere Față &amp; Spate</h3>
+              <span class="badge on">2D Inverse Kinematics</span>
+            </div>
+            <p class="hint">
+              Roary calculează automat unde trebuie să se oprească și cum să se rotească centrul șasiului pentru ca <b>vârful ghearei extinse</b> să atingă exact obiectul de pe teren (poți da click direct pe orice bilă verde/mov de pe teren!).
+            </p>
+            <div class="sub-btn-row">
+              <button class="sub-btn accent" id="btn-snap-claw">🎯 Trimite Gheara la Cel Mai Apropiat Obiect</button>
+            </div>
+            <div class="slider-row">
+              <label for="slider-hext">Glisieră Față (Gheară Colectare):</label>
+              <input type="range" id="slider-hext" min="0" max="37" step="1" value="14" />
+              <span class="slider-val" id="val-hext">14 cm</span>
+            </div>
+            <div class="slider-row">
+              <label for="slider-outext">Glisieră Spate (Cuvă Plasare):</label>
+              <input type="range" id="slider-outext" min="0" max="18" step="1" value="0" />
+              <span class="slider-val" id="val-outext">0 cm</span>
+            </div>
+          </div>
+
+          <!-- Collapsible / Clean Waypoint Editor -->
           <div id="waypoints" class="card">
             <div class="card-head">
-              <h3>Waypoints — <code>TARGET</code> (live Catmull-Rom)</h3>
-              <span class="badge" id="wp-count-badge">6 pts</span>
+              <h3>Puncte de Control ale Curbei (Editare Live)</h3>
+              <span class="badge" id="wp-count-badge">6 puncte</span>
             </div>
+            <p class="hint">
+              <b>Trage</b> orice punct direct pe teren · <b>dublu-click</b> pe teren pentru a adăuga un punct nou · selectează și apasă ✕ pentru ștergere. Curba se recalculează instantaneu!
+            </p>
             <div id="wp-msg"></div>
             <div id="wp-list"></div>
-            <p class="hint">
-              <b>Drag</b> any waypoint on the field · <b>double-click</b> empty field to insert ·
-              click a row/point + <b>Del</b> or ✕ to delete (min 4). <code>splineToDX</code> re-reads
-              <code>TARGET</code> every tick.
-            </p>
           </div>
         </div>
 
-        <!-- ── TAB 3: ROARY INTERNALS & TELEMETRY ── -->
+        <!-- ── TAB 2: SUBSYSTEM MANAGERS & STATE MACHINES ── -->
+        <div class="tab-pane" id="tab-subsystems">
+          <!-- 1. Full Auto Mission State Machine -->
+          <div class="card">
+            <div class="card-head">
+              <h3>1 · Ciclu Autonom Multi-Etapă (State Machine)</h3>
+              <span class="badge" id="fsm-cycle-badge">Pregătit</span>
+            </div>
+            <p class="hint">
+              Automat cu stări <b>non-blocking</b>: robotul își coordonează singur navigația pe curbă, pornirea colectorului în afara zonelor protejate, oscilația de preluare (<i>tremor</i>), scorul și parcarea.
+            </p>
+            <div class="fsm-flow" id="fsm-auto-nodes">
+              <span class="fsm-node active" data-st="IDLE">TRASEU LIBER</span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="START">START</span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="LAUNCH">SCOR ZONĂ</span>
+              <span class="fsm-arrow">⇄</span>
+              <span class="fsm-node" data-st="LOAD_SPIKE">COLECTARE <small>(+tremor)</small></span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="PARK">PARCARE</span>
+            </div>
+            <div class="fsm-detail-bar" id="fsm-auto-detail">
+              Mod curent: Urmărire continuă a curbei. Apasă „⚡ Misiune Completă” pentru ciclul complet de meci.
+            </div>
+          </div>
+
+          <!-- 2. 3-Slot Sensor Magazine -->
+          <div class="card">
+            <div class="card-head">
+              <h3>2 · Magazie Inteligentă cu 3 Sloturi &amp; Senzori Culoare</h3>
+              <span class="badge" id="sensor-poll-badge">Senzor activ: #1</span>
+            </div>
+            <p class="hint">
+              Interoghează ciclic senzorii optici și sortează elementele (<b>Verde</b> / <b>Mov</b>) în cele 3 compartimente vizibile și pe șasiul 2D. Când magazia se umple (3/3), respinge automat surplusul și aprinde LED-ul <b>ALB</b>.
+            </p>
+            <div id="slot-cards">
+              <div class="slot-card" id="slot-0">
+                <div class="slot-hdr">Slot Central</div>
+                <div class="slot-orb" id="slot-orb-0"></div>
+                <div class="slot-val" id="slot-val-0">GOL</div>
+                <div class="slot-paddle" id="slot-pad-0">Paletă: ÎNCĂRCARE</div>
+              </div>
+              <div class="slot-card" id="slot-1">
+                <div class="slot-hdr">Slot Stânga</div>
+                <div class="slot-orb" id="slot-orb-1"></div>
+                <div class="slot-val" id="slot-val-1">GOL</div>
+                <div class="slot-paddle" id="slot-pad-1">Paletă: ÎNCĂRCARE</div>
+              </div>
+              <div class="slot-card" id="slot-2">
+                <div class="slot-hdr">Slot Dreapta</div>
+                <div class="slot-orb" id="slot-orb-2"></div>
+                <div class="slot-val" id="slot-val-2">GOL</div>
+                <div class="slot-paddle" id="slot-pad-2">Paletă: ÎNCĂRCARE</div>
+              </div>
+            </div>
+            <div class="sub-btn-row">
+              <button class="sub-btn" id="btn-fill-slots">＋ Încarcă 3 Elemente</button>
+              <button class="sub-btn" id="btn-wipe-slots">✕ Golește Magazia</button>
+              <button class="sub-btn" id="btn-cycle-motif">Ordine Motiv: <b id="motif-val">1 (V·M·M)</b></button>
+            </div>
+          </div>
+
+          <!-- 3. Intake Manager & Overcurrent Auto-Unstuck -->
+          <div class="card">
+            <div class="card-head">
+              <h3>3 · Colector Activ &amp; Protecție Automată la Blocaj</h3>
+              <span class="badge" id="intake-amps-badge">0.1 A</span>
+            </div>
+            <p class="hint">
+              Dacă un obiect se blochează și curentul depășește <b>7.1 A</b>, Roary inversează instantaneu rolele și execută o secvență automată în 4 pași de deblocare a paletelor interne, fără intervenția pilotului.
+            </p>
+            <div class="sub-btn-row">
+              <button class="sub-btn" id="btn-intake-eat">⬇ Colectează (Activ)</button>
+              <button class="sub-btn" id="btn-intake-stop">■ Oprește Rolele</button>
+              <button class="sub-btn" id="btn-intake-spit">⬆ Evacuează</button>
+              <button class="sub-btn warn" id="btn-jam">⚡ Simulează Blocaj (&gt;7.1A)</button>
+            </div>
+            <div class="fsm-detail-bar" id="intake-status-bar">
+              Colector în așteptare · Protecție supracurent: NORMAL (&lt;7.1A)
+            </div>
+          </div>
+
+          <!-- 4. 6-Step Transfer & Scoring Sequence -->
+          <div class="card">
+            <div class="card-head">
+              <h3>4 · Automat de Transfer &amp; Plasare în 6 Pași</h3>
+              <span class="badge" id="outtake-ready-badge">PREGĂTIT</span>
+            </div>
+            <p class="hint">
+              Secvență sincronizată non-blocking: retrage glisiera față, extinde glisiera spate, acționează paletele în ordinea motivului și plasează elementele pe teren.
+            </p>
+            <div class="sub-btn-row">
+              <button class="sub-btn accent" id="btn-unload-seq">📦 Execută Transfer &amp; Plasare (6 Pași)</button>
+              <button class="sub-btn accent" id="btn-launch-seq">🎯 Plasează în Ordinea Motivului</button>
+            </div>
+            <div class="fsm-flow compact" id="fsm-unload-steps">
+              <span class="fsm-node" data-ustep="1">1:Rezervare</span>
+              <span class="fsm-node" data-ustep="2">2:Extindere</span>
+              <span class="fsm-node" data-ustep="3">3:Transfer</span>
+              <span class="fsm-node" data-ustep="4">4:Plasare</span>
+              <span class="fsm-node" data-ustep="5">5:Confirmare</span>
+              <span class="fsm-node" data-ustep="6">6:Retragere</span>
+            </div>
+            <div class="fsm-detail-bar" id="outtake-status-bar">
+              Stare secvență: Pregătit · Elemente plasate pe teren: 0
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB 3: DATE TEHNICE (Pentru Ingineri / Verificare) ── -->
         <div class="tab-pane" id="tab-telemetry">
           <div id="telemetry" class="card">
-            <h3><code>splineToDX</code> &amp; <code>goToV2</code> Internals</h3>
+            <div class="card-head">
+              <h3>Parametri Fizici &amp; Telemetrie Internă RoaryX7</h3>
+              <span class="badge"><span id="tel-hz">60</span> Hz · <span id="tel-runtime">0.0</span>s</span>
+            </div>
+            <p class="hint">
+              Valori interne calculate la 60 Hz de portarea 1:1 a controlerului <code>Roaryx7.java</code>.
+            </p>
             <table>
-              <tr><td>Robot Pose (X, Y, H)</td><td><span id="tel-x">0.00</span>, <span id="tel-y">0.00</span>, <span id="tel-h">0.0°</span></td></tr>
-              <tr><td>Velocity (<code>vel.radius()</code>)</td><td id="tel-vel">0.0 cm/s</td></tr>
-              <tr><td>Follower Stage</td><td id="tel-done">spline</td></tr>
-              <tr><td>Spline Window <code>i</code> / <code>localT</code> / <code>t</code></td><td id="tel-spline-t">0 / 0.00 / 0.00</td></tr>
-              <tr><td><code>distanceToEnd</code> / <code>BRAKEPLS</code></td><td id="tel-dist-end">0.0 cm / false</td></tr>
-              <tr><td><code>normalPower</code> (push to curve)</td><td id="tel-norm-p">0.000</td></tr>
-              <tr><td><code>derivativePower</code> (tangent)</td><td id="tel-deriv-p">0.000</td></tr>
-              <tr><td><code>projectionPower</code> (centripetal)</td><td id="tel-proj-p">0.000</td></tr>
-              <tr><td><code>powerMixer</code> / <code>breakPower</code></td><td id="tel-mixer">0.000 / 1.000</td></tr>
-              <tr><td><code>rotX</code> / <code>rotY</code> (robot frame)</td><td><span id="tel-rx">0.000</span> / <span id="tel-ry">0.000</span></td></tr>
-              <tr><td><code>headingPower</code> / <code>deltaH</code></td><td><span id="tel-hp">0.000</span> (<span id="tel-dh">0.0°</span>)</td></tr>
-              <tr><td><code>powerCompensator</code> (14V / Vbat)</td><td id="tel-vcomp">1.000 (14.0V)</td></tr>
-              <tr><td>Claw World Pose (<code>robotToClawPos</code>)</td><td id="tel-claw-pose">0.0, 0.0</td></tr>
-              <tr><td>OutTake World Pose (<code>robotToOutTakePos</code>)</td><td id="tel-out-pose">0.0, 0.0</td></tr>
+              <tr><td>Poziție Robot (X, Y, Orientare)</td><td><span id="tel-x">0.00</span> cm, <span id="tel-y">0.00</span> cm, <span id="tel-h">0.0°</span></td></tr>
+              <tr><td>Viteză Șasiu</td><td id="tel-vel">0.0 cm/s</td></tr>
+              <tr><td>Stare Urmăritor</td><td id="tel-done">spline</td></tr>
+              <tr><td>Fereastră Spline <code>i / localT / t</code></td><td id="tel-spline-t">0 / 0.00 / 0.00</td></tr>
+              <tr><td>Distanță până la Final / Frânare</td><td id="tel-dist-end">0.0 cm / false</td></tr>
+              <tr><td>Vector Normal (Corecție pe curbă)</td><td id="tel-norm-p">0.000</td></tr>
+              <tr><td>Vector Tangent (Propulsie pe curbă)</td><td id="tel-deriv-p">0.000</td></tr>
+              <tr><td>Vector Centripet (Anticipare viraj)</td><td id="tel-proj-p">0.000</td></tr>
+              <tr><td>Mixer Viteză / Factor Frânare</td><td id="tel-mixer">0.000 / 1.000</td></tr>
+              <tr><td>Comandă Cadru Robot (<code>rotX / rotY</code>)</td><td><span id="tel-rx">0.000</span> / <span id="tel-ry">0.000</span></td></tr>
+              <tr><td>Corecție Orientare (<code>headingPower</code>)</td><td><span id="tel-hp">0.000</span> (<span id="tel-dh">0.0°</span>)</td></tr>
+              <tr><td>Compensare Tensiune Baterie</td><td id="tel-vcomp">1.000 (14.0V)</td></tr>
+              <tr><td>Coordonate Vârf Gheară Față</td><td id="tel-claw-pose">0.0, 0.0</td></tr>
+              <tr><td>Coordonate Cuvă Spate</td><td id="tel-out-pose">0.0, 0.0</td></tr>
             </table>
 
             <div class="slider-row" style="margin-top:10px">
-              <label for="slider-vbat">Simulated Battery <code>Vbat</code>:</label>
+              <label for="slider-vbat">Simulare Tensiune Baterie (Compensare Automată):</label>
               <input type="range" id="slider-vbat" min="11.0" max="14.2" step="0.1" value="14.0" />
               <span class="slider-val" id="val-vbat">14.0 V</span>
             </div>
@@ -365,8 +431,7 @@
 
     <footer>
       <p>
-        1:1 port of <code>doritoPower/Roaryx7.java</code> · <code>autonom/Kirby/KirbyAirRiders.java</code> ·
-        <code>hardware/subsystems/Decode/Kirby &amp; Kathy</code> · <code>hardware/math/{Point,Pose2d,Meth}.java</code>
+        <b>RoaryX7 Holonomic Control Architecture</b> · Demonstrație interactivă 2D bazată pe nucleul matematic <code>Roaryx7</code> (Catmull-Rom Spline, Inverse Kinematics &amp; Non-Blocking State Machines)
       </p>
     </footer>
   </div>
