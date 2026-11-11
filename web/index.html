@@ -3,89 +3,361 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RoaryX7 — Holonomic Drive Controller</title>
+  <title>RoaryX7 — Holonomic Drive &amp; Subsystem Architecture Demo</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
-    <header>
-      <h1>RoaryX7</h1>
-      <p class="subtitle">Holonomic Drive — always running in the background</p>
-    </header>
-
-    <div id="main">
-      <!-- ── Field canvas ── -->
-      <div id="canvas-wrap">
-        <canvas id="field" width="640" height="640"></canvas>
+    <header id="topbar">
+      <div class="brand">
+        <div class="logo-badge">RX7</div>
+        <div>
+          <h1>RoaryX7 <span class="tag-pill">Decode 2D Showcase</span></h1>
+          <p class="subtitle">Always-running holonomic drive · Catmull-Rom <code>splineToDX</code> · non-blocking state managers</p>
+        </div>
       </div>
 
-      <!-- ── Controls & telemetry ── -->
+      <div id="status-strip">
+        <div class="stat-chip" id="chip-gotok">
+          <span class="dot" id="dot-gotok"></span>
+          <div>
+            <div class="chip-label">goToK (Key B)</div>
+            <div class="chip-val" id="goToK-indicator">goToK = 0 · stick only</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <span class="dot farul-dot" id="dot-farul"></span>
+          <div>
+            <div class="chip-label">Farul LED (<code>statusCode</code>)</div>
+            <div class="chip-val" id="farul-indicator">RED · Out of zone</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div>
+            <div class="chip-label">AUTO_STATE</div>
+            <div class="chip-val" id="chip-autostate">MANUAL_SPLINE</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div>
+            <div class="chip-label">Loop</div>
+            <div class="chip-val"><span id="tel-hz">60</span> Hz · <span id="tel-runtime">0.0</span>s</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Interactive Scenario Presets ── -->
+    <section id="preset-bar">
+      <span class="preset-title">Scenarios:</span>
+      <button class="preset-btn active" data-preset="spline" title="Default KirbyAirRiders 6-point spline path">
+        1 · Spline Follower (<code>splineToDX</code>)
+      </button>
+      <button class="preset-btn" data-preset="full-auto" title="Full KirbyAirRiders AUTO_STATE cycle: START → LAUNCH → LOAD_SPIKE (+tremor) → LAUNCH → PARK">
+        2 · Full Auto Cycle (<code>AUTO_STATE</code> FSM)
+      </button>
+      <button class="preset-btn" data-preset="intake-lab" title="Drive over field artifacts with Intake ON (-1), watch 3-slot round-robin color sensors, spit-on-full &amp; OC jam protection">
+        3 · Intake &amp; 3-Slot Indexer Lab
+      </button>
+      <button class="preset-btn" data-preset="offset-ik" title="Front claw (robotToClawPos) &amp; rear outTake (robotToOutTakePos) slide offset kinematics + 6-step unloadManager">
+        4 · Slide Offset IK &amp; <code>unloadManager</code>
+      </button>
+    </section>
+
+    <div id="main">
+      <!-- ── Left column: Field canvas + Layer toggles + Power Equation ── -->
+      <div id="left-col">
+        <div id="canvas-wrap">
+          <div id="canvas-toolbar">
+            <div class="layer-group">
+              <span class="toolbar-label">2D Overlays:</span>
+              <label class="toggle-pill"><input type="checkbox" id="ov-vectors" checked /> <span>Force Vectors (<code>N + D + P</code>)</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-zones" checked /> <span>Triangle Zones</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-offsets" checked /> <span>Claw / OutTake Slides</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-trail" checked /> <span>Odometry Trail</span></label>
+              <label class="toggle-pill"><input type="checkbox" id="ov-lookahead" /> <span><code>lookAhead</code> / <code>futurePos</code></span></label>
+            </div>
+            <button id="btn-clear-trail" class="mini-btn" title="Clear robot trajectory trail &amp; respawn field elements">↺ Respawn Field</button>
+          </div>
+
+          <canvas id="field" width="640" height="640"></canvas>
+
+          <div id="canvas-legend">
+            <span><i class="lg-swatch" style="background:#f0b429"></i><code>target</code> + tangent (<code>derivative</code>)</span>
+            <span><i class="lg-swatch" style="background:#ff7b72"></i><code>normalPower</code> (push to curve)</span>
+            <span><i class="lg-swatch" style="background:#3fb950"></i><code>derivativePower</code> (along curve)</span>
+            <span><i class="lg-swatch" style="background:#d2a8ff"></i><code>projectionPower</code> (centripetal)</span>
+            <span><i class="lg-swatch" style="background:#58a6ff"></i><code>totalPower</code></span>
+          </div>
+        </div>
+
+        <!-- Live Roary Power Composition Bar -->
+        <div id="composition-card" class="card">
+          <div class="card-head">
+            <h3>Roary Power Composition — <code>motor = goTo · goToK + mainDrivePowers</code></h3>
+            <span class="badge" id="comp-state-badge">tel-done</span>
+          </div>
+          <div id="wheel-bars">
+            <div class="wbar-row" data-w="FL">
+              <span class="wbar-name" id="wheel-fl">FL: 0.00</span>
+              <div class="wbar-track">
+                <div class="wbar-center"></div>
+                <div class="wbar-goto" id="wbar-fl-goto"></div>
+                <div class="wbar-stick" id="wbar-fl-stick"></div>
+              </div>
+              <span class="wbar-formula" id="wbar-fl-txt">0.00·0 + 0.00</span>
+            </div>
+            <div class="wbar-row" data-w="FR">
+              <span class="wbar-name" id="wheel-fr">FR: 0.00</span>
+              <div class="wbar-track">
+                <div class="wbar-center"></div>
+                <div class="wbar-goto" id="wbar-fr-goto"></div>
+                <div class="wbar-stick" id="wbar-fr-stick"></div>
+              </div>
+              <span class="wbar-formula" id="wbar-fr-txt">0.00·0 + 0.00</span>
+            </div>
+            <div class="wbar-row" data-w="BL">
+              <span class="wbar-name" id="wheel-bl">BL: 0.00</span>
+              <div class="wbar-track">
+                <div class="wbar-center"></div>
+                <div class="wbar-goto" id="wbar-bl-goto"></div>
+                <div class="wbar-stick" id="wbar-bl-stick"></div>
+              </div>
+              <span class="wbar-formula" id="wbar-bl-txt">0.00·0 + 0.00</span>
+            </div>
+            <div class="wbar-row" data-w="BR">
+              <span class="wbar-name" id="wheel-br">BR: 0.00</span>
+              <div class="wbar-track">
+                <div class="wbar-center"></div>
+                <div class="wbar-goto" id="wbar-br-goto"></div>
+                <div class="wbar-stick" id="wbar-br-stick"></div>
+              </div>
+              <span class="wbar-formula" id="wbar-br-txt">0.00·0 + 0.00</span>
+            </div>
+          </div>
+          <div class="comp-legend">
+            <span><i class="lg-box goto-box"></i><code>goTo · goToK</code> (Autonomous spline / goToV2)</span>
+            <span><i class="lg-box stick-box"></i><code>mainDrivePowers</code> (TeleOp stick — blends live even during Auto!)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Right column: Controls, Tabs (Drive & Waypoints | Subsystems & FSM | Math & Telemetry) ── -->
       <div id="panel">
-        <!-- Auto (goToK) -->
-        <div id="auto-controls">
-          <h3>Kirby Air Riders — Auto</h3>
-          <p class="hint">
-            Roary never starts or stops — the loop just runs. The stick always
-            drives (<code>mainDrivePowers</code>). <b>Start Auto</b> only toggles
-            <code>goToK</code>, so the spline's power (<code>goTo</code>) is added in
-            or not. <code>B</code> toggles it too.
-          </p>
+        <!-- Primary Action Bar (always visible) -->
+        <div id="auto-controls" class="card">
           <div id="btn-row">
-            <button id="btn-start-auto">▶ Start Auto</button>
-            <button id="btn-reset">⟲ Reset Robot</button>
+            <button id="btn-start-auto" title="Shortcut: B">▶ Start Auto (B)</button>
+            <button id="btn-full-fsm" title="Run multi-stage AUTO_STATE sequence">⚡ Auto FSM</button>
+            <button id="btn-reset" title="Shortcut: R">⟲ Reset</button>
           </div>
-          <div id="goToK-indicator">goToK = 0 · stick only</div>
+          <div id="kbd-bar">
+            <span class="kbd-chip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Drive</span>
+            <span class="kbd-chip"><kbd>Q</kbd><kbd>E</kbd> Rotate</span>
+            <span class="kbd-chip"><kbd>B</kbd> goToK</span>
+            <span class="kbd-chip"><kbd>I</kbd> Intake</span>
+            <span class="kbd-chip"><kbd>X</kbd> Score/Launch</span>
+            <span class="kbd-chip"><kbd>U</kbd> Unload FSM</span>
+            <span class="kbd-chip"><kbd>J</kbd> Jam OC</span>
+          </div>
         </div>
 
-        <!-- Stick -->
-        <div id="teleop-controls">
-          <h3>Stick (drag or WASD + Q/E)</h3>
-          <div id="joystick-wrap">
-            <canvas id="joystick" width="120" height="120"></canvas>
-          </div>
-          <div id="joy-info">
-            <span id="joy-x">X: 0.00</span>
-            <span id="joy-y">Y: 0.00</span>
-            <span id="joy-r">R: 0.00</span>
-          </div>
-          <p class="hint">
-            W/S = forward/back · A/D = strafe · Q/E = rotate.
-            Works in auto too — it blends onto the spline.
-          </p>
+        <!-- Panel Navigation Tabs -->
+        <div id="panel-tabs">
+          <button class="tab-btn active" data-tab="tab-subsystems">Subsystems &amp; FSM</button>
+          <button class="tab-btn" data-tab="tab-drive">Stick &amp; Waypoints</button>
+          <button class="tab-btn" data-tab="tab-telemetry">Roary Internals</button>
         </div>
 
-        <!-- Waypoints (TARGET) — live editing -->
-        <div id="waypoints">
-          <h3>Waypoints — TARGET (live)</h3>
-          <div id="wp-msg"></div>
-          <div id="wp-list"></div>
-          <p class="hint">
-            <b>Drag</b> a point on the field to move it · <b>double-click</b> the
-            field to add one · click a point/row to select, then
-            <b>Del</b> or ✕ to delete (min 4). Edits apply live — Roary keeps running.
-          </p>
+        <!-- ── TAB 1: SUBSYSTEM MANAGERS & STATE MACHINES ── -->
+        <div class="tab-pane active" id="tab-subsystems">
+          <!-- OpMode AUTO_STATE machine -->
+          <div class="card">
+            <div class="card-head">
+              <h3>1 · OpMode State Machine (<code>KirbyAirRiders.AUTO_STATE</code>)</h3>
+              <span class="badge" id="fsm-cycle-badge">cycleNR = 0</span>
+            </div>
+            <p class="hint">
+              Non-blocking <code>switch(AUTO)</code> with <code>hasStarted</code> entry guard,
+              <code>currentAction</code> sub-steps, <code>delayTime</code> &amp; <code>safetyTime</code>,
+              plus <code>tremor</code> oscillation (<code>sendPower</code> in Roary space) when collecting.
+            </p>
+            <div class="fsm-flow" id="fsm-auto-nodes">
+              <span class="fsm-node" data-st="IDLE">MANUAL_SPLINE</span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="START">START</span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="LAUNCH">LAUNCH</span>
+              <span class="fsm-arrow">⇄</span>
+              <span class="fsm-node" data-st="LOAD_SPIKE">LOAD_SPIKE <small>(+tremor)</small></span>
+              <span class="fsm-arrow">→</span>
+              <span class="fsm-node" data-st="PARK">PARK</span>
+            </div>
+            <div class="fsm-detail-bar" id="fsm-auto-detail">
+              Mode: Single-path <code>splineToDX(TARGET, vel)</code> → <code>goToV2</code>. Click <b>⚡ Auto FSM</b> or Scenario 2 for full cycle.
+            </div>
+          </div>
+
+          <!-- Sensors + 3-Slot Indexer Manager -->
+          <div class="card">
+            <div class="card-head">
+              <h3>2 · <code>Sensors</code> — 3-Slot Indexer &amp; Round-Robin Polling</h3>
+              <span class="badge" id="sensor-poll-badge">loopNr % 3 = 0</span>
+            </div>
+            <p class="hint">
+              Polls 1 color/distance sensor per tick (<code>updateSlots(loopNr % 3)</code>).
+              When 3/3 fill outside the triangle zone, triggers 0.24s auto-spit (<code>hasSpit</code>) &amp; flashes Farul <b>WHITE</b>.
+            </p>
+            <div id="slot-cards">
+              <div class="slot-card" id="slot-0">
+                <div class="slot-hdr">Slot 0 · MID</div>
+                <div class="slot-orb" id="slot-orb-0"></div>
+                <div class="slot-val" id="slot-val-0">NOTHING</div>
+                <div class="slot-paddle" id="slot-pad-0">Paddle: LOAD</div>
+              </div>
+              <div class="slot-card" id="slot-1">
+                <div class="slot-hdr">Slot 1 · LEFT</div>
+                <div class="slot-orb" id="slot-orb-1"></div>
+                <div class="slot-val" id="slot-val-1">NOTHING</div>
+                <div class="slot-paddle" id="slot-pad-1">Paddle: LOAD</div>
+              </div>
+              <div class="slot-card" id="slot-2">
+                <div class="slot-hdr">Slot 2 · RIGHT</div>
+                <div class="slot-orb" id="slot-orb-2"></div>
+                <div class="slot-val" id="slot-val-2">NOTHING</div>
+                <div class="slot-paddle" id="slot-pad-2">Paddle: LOAD</div>
+              </div>
+            </div>
+            <div class="sub-btn-row">
+              <button class="sub-btn" id="btn-fill-slots" title="sensors.fillSlotsRobot()">Fill 3 Slots</button>
+              <button class="sub-btn" id="btn-wipe-slots" title="sensors.wipeSlots()">Wipe Slots</button>
+              <button class="sub-btn" id="btn-cycle-motif" title="Motif order for launchControl(additional, motif)">Motif: <b id="motif-val">1 (G·P·P)</b></button>
+            </div>
+          </div>
+
+          <!-- Intake Manager + OC Protection + Unstuck -->
+          <div class="card">
+            <div class="card-head">
+              <h3>3 · <code>Intake</code> Manager, <code>ocProtection</code> &amp; <code>Unstuck</code></h3>
+              <span class="badge" id="intake-amps-badge">0.1 A</span>
+            </div>
+            <div class="sub-btn-row">
+              <button class="sub-btn" id="btn-intake-eat" title="Shortcut: I — setPowerIntakeAuto(-1) ('MINUS MANANCA')">⬇ Intake (-1)</button>
+              <button class="sub-btn" id="btn-intake-stop" title="setPowerIntakeAuto(0)">■ Stop (0)</button>
+              <button class="sub-btn" id="btn-intake-spit" title="setPowerIntakeAuto(+1)">⬆ Spit (+1)</button>
+              <button class="sub-btn warn" id="btn-jam" title="Shortcut: J — Spike current > 7.1A to trigger ocProtection() + Unstuck()">⚡ Jam (&gt;7.1A)</button>
+            </div>
+            <div class="slider-row">
+              <label for="slider-hext">Front Slide <code>hExt</code> (<code>robotToClawPos</code>):</label>
+              <input type="range" id="slider-hext" min="0" max="37" step="1" value="0" />
+              <span class="slider-val" id="val-hext">0 cm</span>
+            </div>
+            <div class="fsm-detail-bar" id="intake-status-bar">
+              Rollers: 0.00 · OC Protection: OK (&lt;7.1A) · Unstuck: IDLE
+            </div>
+          </div>
+
+          <!-- OutTake + UnloadManager + LaunchControl -->
+          <div class="card">
+            <div class="card-head">
+              <h3>4 · <code>unloadManager</code> (6-step) &amp; <code>launchControl</code> (5-step)</h3>
+              <span class="badge" id="outtake-ready-badge">IDLE</span>
+            </div>
+            <p class="hint">
+              2D top-down view of the multi-step transfer sequences: reserves intake, extends the rear
+              <code>outTake</code> slide (<code>robotToOutTakePos</code>), cycles paddles/claw, and drops elements on the field.
+            </p>
+            <div class="sub-btn-row">
+              <button class="sub-btn accent" id="btn-launch-seq" title="Shortcut: X — Run 5-step launchControl(additional, motif)">▶ <code>launchControl</code> (X)</button>
+              <button class="sub-btn accent" id="btn-unload-seq" title="Shortcut: U — Run 6-step unloadManager()">▶ <code>unloadManager</code> (U)</button>
+              <button class="sub-btn" id="btn-snap-claw" title="Use clawToRobotPos() to compute robot target pose for the nearest field element">🎯 <code>clawToRobotPos</code></button>
+            </div>
+            <div class="slider-row">
+              <label for="slider-outext">Rear Slide <code>outExt</code> (<code>robotToOutTakePos</code>):</label>
+              <input type="range" id="slider-outext" min="0" max="18" step="1" value="0" />
+              <span class="slider-val" id="val-outext">0 cm</span>
+            </div>
+            <div class="fsm-flow compact" id="fsm-unload-steps">
+              <span class="fsm-node" data-ustep="1">1:Reserve</span>
+              <span class="fsm-node" data-ustep="2">2:Extend+Shift</span>
+              <span class="fsm-node" data-ustep="3">3:Clearance</span>
+              <span class="fsm-node" data-ustep="4">4:Drop</span>
+              <span class="fsm-node" data-ustep="5">5:unloadDone</span>
+              <span class="fsm-node" data-ustep="6">6:Retract</span>
+            </div>
+            <div class="fsm-detail-bar" id="outtake-status-bar">
+              launchDone: true · unloadDone: true · Bascula: LOAD · Claw: OPEN
+            </div>
+          </div>
         </div>
 
-        <!-- Telemetry -->
-        <div id="telemetry">
-          <h3>Telemetry</h3>
-          <table>
-            <tr><td>X</td><td id="tel-x">0.00</td></tr>
-            <tr><td>Y</td><td id="tel-y">0.00</td></tr>
-            <tr><td>Heading</td><td id="tel-h">0.0°</td></tr>
-            <tr><td>Speed</td><td id="tel-vel">0.0 cm/s</td></tr>
-            <tr><td>rotX / rotY</td><td><span id="tel-rx">0.000</span> / <span id="tel-ry">0.000</span></td></tr>
-            <tr><td>Heading Pwr</td><td id="tel-hp">0.000</td></tr>
-            <tr><td>State</td><td id="tel-done">—</td></tr>
-            <tr><td>Loop Hz</td><td id="tel-hz">0</td></tr>
-          </table>
+        <!-- ── TAB 2: STICK & WAYPOINT EDITOR ── -->
+        <div class="tab-pane" id="tab-drive">
+          <div id="teleop-controls" class="card">
+            <div class="card-head">
+              <h3>Virtual Gamepad Stick (<code>mainDrive</code>)</h3>
+              <span class="badge" id="power-ramp-badge">power = 1.00</span>
+            </div>
+            <div class="joy-layout">
+              <div id="joystick-wrap">
+                <canvas id="joystick" width="120" height="120"></canvas>
+              </div>
+              <div class="joy-meta">
+                <div id="joy-info">
+                  <span id="joy-x">X: 0.00</span>
+                  <span id="joy-y">Y: 0.00</span>
+                  <span id="joy-r">R: 0.00</span>
+                </div>
+                <p class="hint">
+                  Drag stick or use <b>WASD</b> (0.60) + <b>Q/E</b> (0.50).
+                  Above <code>|speed| &gt; 0.89</code> (full stick drag), <code>mainDrive</code> ramps
+                  <code>this.power</code> up to <code>1.70</code>!
+                </p>
+              </div>
+            </div>
+          </div>
 
-          <h4>Wheel Powers</h4>
-          <div id="wheels">
-            <div class="wheel" id="wheel-fl">FL: 0.00</div>
-            <div class="wheel" id="wheel-fr">FR: 0.00</div>
-            <div class="wheel" id="wheel-bl">BL: 0.00</div>
-            <div class="wheel" id="wheel-br">BR: 0.00</div>
+          <div id="waypoints" class="card">
+            <div class="card-head">
+              <h3>Waypoints — <code>TARGET</code> (live Catmull-Rom)</h3>
+              <span class="badge" id="wp-count-badge">6 pts</span>
+            </div>
+            <div id="wp-msg"></div>
+            <div id="wp-list"></div>
+            <p class="hint">
+              <b>Drag</b> any waypoint on the field · <b>double-click</b> empty field to insert ·
+              click a row/point + <b>Del</b> or ✕ to delete (min 4). <code>splineToDX</code> re-reads
+              <code>TARGET</code> every tick.
+            </p>
+          </div>
+        </div>
+
+        <!-- ── TAB 3: ROARY INTERNALS & TELEMETRY ── -->
+        <div class="tab-pane" id="tab-telemetry">
+          <div id="telemetry" class="card">
+            <h3><code>splineToDX</code> &amp; <code>goToV2</code> Internals</h3>
+            <table>
+              <tr><td>Robot Pose (X, Y, H)</td><td><span id="tel-x">0.00</span>, <span id="tel-y">0.00</span>, <span id="tel-h">0.0°</span></td></tr>
+              <tr><td>Velocity (<code>vel.radius()</code>)</td><td id="tel-vel">0.0 cm/s</td></tr>
+              <tr><td>Follower Stage</td><td id="tel-done">spline</td></tr>
+              <tr><td>Spline Window <code>i</code> / <code>localT</code> / <code>t</code></td><td id="tel-spline-t">0 / 0.00 / 0.00</td></tr>
+              <tr><td><code>distanceToEnd</code> / <code>BRAKEPLS</code></td><td id="tel-dist-end">0.0 cm / false</td></tr>
+              <tr><td><code>normalPower</code> (push to curve)</td><td id="tel-norm-p">0.000</td></tr>
+              <tr><td><code>derivativePower</code> (tangent)</td><td id="tel-deriv-p">0.000</td></tr>
+              <tr><td><code>projectionPower</code> (centripetal)</td><td id="tel-proj-p">0.000</td></tr>
+              <tr><td><code>powerMixer</code> / <code>breakPower</code></td><td id="tel-mixer">0.000 / 1.000</td></tr>
+              <tr><td><code>rotX</code> / <code>rotY</code> (robot frame)</td><td><span id="tel-rx">0.000</span> / <span id="tel-ry">0.000</span></td></tr>
+              <tr><td><code>headingPower</code> / <code>deltaH</code></td><td><span id="tel-hp">0.000</span> (<span id="tel-dh">0.0°</span>)</td></tr>
+              <tr><td><code>powerCompensator</code> (14V / Vbat)</td><td id="tel-vcomp">1.000 (14.0V)</td></tr>
+              <tr><td>Claw World Pose (<code>robotToClawPos</code>)</td><td id="tel-claw-pose">0.0, 0.0</td></tr>
+              <tr><td>OutTake World Pose (<code>robotToOutTakePos</code>)</td><td id="tel-out-pose">0.0, 0.0</td></tr>
+            </table>
+
+            <div class="slider-row" style="margin-top:10px">
+              <label for="slider-vbat">Simulated Battery <code>Vbat</code>:</label>
+              <input type="range" id="slider-vbat" min="11.0" max="14.2" step="0.1" value="14.0" />
+              <span class="slider-val" id="val-vbat">14.0 V</span>
+            </div>
           </div>
         </div>
       </div>
@@ -93,8 +365,8 @@
 
     <footer>
       <p>
-        Drive logic ported from <code>doritoPower/Roaryx7.java</code> ·
-        <code>mainDrive</code> + waypoints from <code>autonom/Kirby/KirbyAirRiders.java</code>
+        1:1 port of <code>doritoPower/Roaryx7.java</code> · <code>autonom/Kirby/KirbyAirRiders.java</code> ·
+        <code>hardware/subsystems/Decode/Kirby &amp; Kathy</code> · <code>hardware/math/{Point,Pose2d,Meth}.java</code>
       </p>
     </footer>
   </div>
