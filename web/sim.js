@@ -748,10 +748,12 @@ function drawMotionTrail() {
   ctx.restore();
 }
 
-// ─── Draw Trajectory Spline ───────────────────────────────────────────────────
+// ─── Draw Catmull-Rom Trajectory Spline & Waypoint Nodes ─────────────────────
 function drawTrajectorySpline() {
   if (!CURRENT_SPLINE || CURRENT_SPLINE.length < 4) return;
   ctx.save();
+
+  // 1. Draw smooth Catmull-Rom dashed spline curve
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2.4;
   ctx.setLineDash([6, 5]);
@@ -774,6 +776,80 @@ function drawTrajectorySpline() {
   }
   ctx.stroke();
   ctx.setLineDash([]);
+
+  // 2. Extract unique waypoints along the trajectory
+  const uniqueWaypoints = [];
+  for (let i = 0; i < CURRENT_SPLINE.length; i++) {
+    const pt = CURRENT_SPLINE[i].target;
+    const isDuplicate = uniqueWaypoints.some(u => Math.hypot(u.x - pt.x, u.y - pt.y) < 1.5);
+    if (!isDuplicate) {
+      uniqueWaypoints.push(pt);
+    }
+  }
+
+  // 3. Draw Waypoint Nodes
+  const total = uniqueWaypoints.length;
+  uniqueWaypoints.forEach((wp, idx) => {
+    const c = worldToCanvas(wp.x, wp.y);
+    const isStart = idx === 0;
+    const isEnd = idx === total - 1;
+
+    // Node color scheme
+    const strokeColor = isStart ? '#38bdf8' : isEnd ? '#22c55e' : '#60a5fa';
+    const fillColor = isStart ? 'rgba(56, 189, 248, 0.25)' : isEnd ? 'rgba(34, 197, 94, 0.3)' : 'rgba(96, 165, 250, 0.2)';
+
+    // Outer halo
+    ctx.fillStyle = fillColor;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, isEnd ? 9 : 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer ring
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isEnd ? 2.2 : 1.8;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, isEnd ? 9 : 7, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Directional heading tick
+    if (wp.heading !== undefined) {
+      const hRad = toRadians(wp.heading);
+      const dirX = Math.sin(hRad);
+      const dirY = -Math.cos(hRad);
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.lineTo(c.x + dirX * 14, c.y + dirY * 14);
+      ctx.stroke();
+    }
+
+    // Waypoint text badge label
+    const label = isStart ? 'START' : isEnd ? 'DEST' : `P${idx + 1}`;
+    ctx.font = 'bold 8px sans-serif';
+    const textW = ctx.measureText(label).width;
+    const labelX = c.x + 10;
+    const labelY = c.y - 6;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(labelX - 3, labelY - 8, textW + 6, 12, 3);
+    else ctx.rect(labelX - 3, labelY - 8, textW + 6, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isEnd ? '#4ade80' : '#e2e8f0';
+    ctx.fillText(label, labelX, labelY + 1);
+  });
+
   ctx.restore();
 }
 
