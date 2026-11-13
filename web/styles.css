@@ -213,6 +213,41 @@ header h1 {
   flex-wrap: wrap;
 }
 
+.scenario-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: #0b0f17;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 4px;
+}
+
+.scenario-btn {
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 11px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.18s ease;
+}
+
+.scenario-btn:hover {
+  color: #fff;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.scenario-btn.active {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.18);
+}
+
 .mission-actions {
   display: flex;
   align-items: center;
@@ -651,6 +686,13 @@ kbd {
   border: 1px solid #fb923c;
   color: #fff;
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+.book-slot.loaded-purple {
+  background: linear-gradient(135deg, #581c87, #a855f7);
+  border: 1px solid #c084fc;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
 }
 
 /* ── Joystick Card ── */

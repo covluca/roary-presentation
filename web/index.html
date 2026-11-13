@@ -15,7 +15,7 @@
         <div>
           <h1>RoaryX7</h1>
           <p class="subtitle">
-            Navigație omnidirecțională pe curbe Catmull-Rom, manipulare precisă a mărfurilor și fuziune live <b>Autonom + Operator</b>
+            Navigație omnidirecțională în spații complexe pe curbe Catmull-Rom și fuziune live <b>Autonom + Operator</b>
           </p>
         </div>
       </div>
@@ -26,23 +26,23 @@
           <span class="dot on" id="dot-mission"></span>
           <div>
             <div class="chip-label">Stare Misiune</div>
-            <div class="chip-val" id="mission-status-text">Gata de Livrare</div>
+            <div class="chip-val" id="mission-status-text">Gata de Navigație</div>
           </div>
         </div>
 
         <div class="stat-chip">
-          <div class="chip-icon">📦</div>
+          <div class="chip-icon" id="chip-delivered-icon">🅿️</div>
           <div>
-            <div class="chip-label">Cărți Livrate</div>
-            <div class="chip-val" id="chip-delivered-count">0 Cărți</div>
+            <div class="chip-label" id="chip-delivered-label">Relocări Parcare</div>
+            <div class="chip-val" id="chip-delivered-count">0 Parcări</div>
           </div>
         </div>
 
         <div class="stat-chip">
-          <div class="chip-icon">🧺</div>
+          <div class="chip-icon" id="chip-cargo-icon">🚗</div>
           <div>
-            <div class="chip-label">Încărcătură Coș</div>
-            <div class="chip-val" id="chip-cargo-count">0 / 3 Cărți</div>
+            <div class="chip-label" id="chip-cargo-label">Ocupare Parcare</div>
+            <div class="chip-val" id="chip-cargo-count">5 / 6 Locuri</div>
           </div>
         </div>
 
@@ -57,29 +57,37 @@
     </header>
 
     <div id="main">
-      <!-- ── Coloana Stângă: Sala / Biroul Modern & Canvas Interactiv ── -->
+      <!-- ── Coloana Stângă: Scena 2D & Canvas Interactiv ── -->
       <div id="left-col">
         <div id="canvas-wrap">
           <!-- Control Toolbar deasupra scenei -->
           <div id="canvas-toolbar">
+            <div class="scenario-switcher" id="scenario-switcher">
+              <button id="btn-scenario-parking" class="scenario-btn active" title="Scenariu Parcare Complexă: Roary navighează spații înguste între mașini">
+                🅿️ Parcare Complexă (Spații Înguste)
+              </button>
+              <button id="btn-scenario-courier" class="scenario-btn" title="Scenariu Curierat: Roary preia 3 cărți de la raft și le livrează la birou">
+                📚 Curierat &amp; Logistică
+              </button>
+            </div>
             <div class="mission-actions">
-              <button id="btn-toggle-mission" class="primary-btn" title="Pornește sau pune în pauză misiunea de curierat">
-                <span id="btn-mission-icon">▶</span> <span id="btn-mission-label">Pornește Misiune Curierat</span>
+              <button id="btn-toggle-mission" class="primary-btn" title="Pornește sau pune în pauză demonstrația autonomă">
+                <span id="btn-mission-icon">▶</span> <span id="btn-mission-label">Pornește Demonstrația</span>
               </button>
               <button id="btn-demo-nudge" class="action-btn accent" title="Simulează un operator care ocolește un obstacol cu joystick-ul">
                 👋 Simulează Ocolire (Pilot Nudge)
               </button>
-              <button id="btn-reset" class="action-btn ghost" title="Resetează robotul la stația de andocare">
+              <button id="btn-reset" class="action-btn ghost" title="Resetează scenariul curent">
                 ↺ Reset
               </button>
             </div>
           </div>
 
-          <!-- Canvas-ul 2D al Sălii -->
+          <!-- Canvas-ul 2D al Sălii / Parcării -->
           <div class="canvas-stage">
             <canvas id="field" width="760" height="580"></canvas>
             <div id="canvas-live-banner" class="canvas-banner">
-              Robot pregătit · Apasă „Pornește Misiune Curierat” sau folosește tastele WASD
+              Parcare Inteligentă · Roary așteaptă eliberarea unui loc de parcare...
             </div>
           </div>
 
@@ -90,13 +98,13 @@
               <span class="kbd-chip"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Deplasare liberă</span>
               <span class="kbd-chip"><kbd>Q</kbd><kbd>E</kbd> Rotație</span>
               <span class="kbd-chip"><kbd>Spațiu</kbd> Pauză/Start</span>
-              <span class="kbd-chip"><kbd>Click pe Podea</kbd> Trimite robotul la destinație</span>
+              <span class="kbd-chip"><kbd>Click pe Scenă</kbd> Alege loc / destinație</span>
             </div>
-            <div class="canvas-legend">
+            <div class="canvas-legend" id="canvas-legend">
               <span><i class="lg-swatch" style="background:#38bdf8"></i>Traseu Optimizat Roary</span>
               <span><i class="lg-swatch" style="background:#60a5fa; border-radius:50%"></i>Puncte de Control (Waypoints)</span>
-              <span><i class="lg-swatch" style="background:#22c55e"></i>Zonă Livrare Birou</span>
-              <span><i class="lg-swatch" style="background:#f59e0b"></i>Raft Cărți &amp; Preluare</span>
+              <span><i class="lg-swatch" style="background:#22c55e"></i>Loc Parcare Eliberat</span>
+              <span><i class="lg-swatch" style="background:#f59e0b"></i>Loc Anterior (Apare Mașină)</span>
               <span><i class="lg-swatch" style="background:#a855f7"></i>Intervenție Manuală Pilot</span>
             </div>
           </div>
@@ -105,10 +113,10 @@
 
       <!-- ── Coloana Dreaptă: Carduri Executive pentru Sponsori ── -->
       <div id="panel">
-        <!-- Card 1: Etape Misiune & Inventar Coș -->
+        <!-- Card 1: Etape Misiune & Stare Parcare / Coș -->
         <div class="card sponsor-card">
           <div class="card-head">
-            <h3>Misiune Logistică în Desfășurare</h3>
+            <h3 id="mission-card-title">Navigație în Parcare &amp; Spații Înguste</h3>
             <span class="badge" id="mission-step-badge">Etapa 1 / 4</span>
           </div>
 
@@ -117,38 +125,38 @@
             <div class="step-item active" id="step-node-1">
               <div class="step-circle">1</div>
               <div class="step-info">
-                <strong>Deplasare la Raft</strong>
-                <small>Navigație omnidirecțională lină</small>
+                <strong id="step-title-1">Eliberare Loc de Parcare</strong>
+                <small id="step-sub-1">Un vehicul pleacă și eliberează spațiul</small>
               </div>
             </div>
             <div class="step-item" id="step-node-2">
               <div class="step-circle">2</div>
               <div class="step-info">
-                <strong>Preluare 3 Cărți</strong>
-                <small>Braț telescopic &amp; încărcare în coș</small>
+                <strong id="step-title-2">Navigație prin Spații Complexe</strong>
+                <small id="step-sub-2">Traseu Catmull-Rom sigur printre mașini</small>
               </div>
             </div>
             <div class="step-item" id="step-node-3">
               <div class="step-circle">3</div>
               <div class="step-info">
-                <strong>Transport Către Birou</strong>
-                <small>Ocolire obstacole și frânare lină</small>
+                <strong id="step-title-3">Ocupare Loc Anterior</strong>
+                <small id="step-sub-3">O mașină nouă apare unde era Roary înainte</small>
               </div>
             </div>
             <div class="step-item" id="step-node-4">
               <div class="step-circle">4</div>
               <div class="step-info">
-                <strong>Predare la Client</strong>
-                <small>Descărcare în tăviță și confirmare</small>
+                <strong id="step-title-4">Relocare Continuă</strong>
+                <small id="step-sub-4">Se eliberează alt loc și Roary pleacă din nou</small>
               </div>
             </div>
           </div>
 
-          <!-- Vizualizator Coș de Cărți (3 Sloturi) -->
+          <!-- Vizualizator Stare Parcare / Coș de Cărți (3 Sloturi) -->
           <div class="cargo-section">
             <div class="cargo-head">
-              <span class="cargo-title">Compartiment Marfă Robot (3 Cărți):</span>
-              <span class="cargo-status" id="cargo-status-label">Coș Gol (0/3)</span>
+              <span class="cargo-title" id="cargo-title-label">Monitorizare Locuri &amp; Siguranță:</span>
+              <span class="cargo-status" id="cargo-status-label">5/6 Ocupate · 0 Coliziuni</span>
             </div>
             <div class="cargo-slots" id="cargo-slots-container">
               <div class="book-slot" id="book-slot-0">
